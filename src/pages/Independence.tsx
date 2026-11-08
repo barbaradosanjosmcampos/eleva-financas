@@ -98,7 +98,7 @@ export default function Independence({
         </p>
       </div>
       <div className="simulator-grid">
-        <section className="panel simulation-form">
+        <section className="panel simulation-form independence-form">
           <h3>Seu ponto de partida</h3>
           {input("Patrimônio inicial (R$)", initial, setInitial, 0, 1e9)}
           {mode === "personal" ? (
@@ -232,7 +232,7 @@ export default function Independence({
                   <XAxis dataKey="year" name="Ano" />
                   <YAxis
                     width={65}
-                    tickFormatter={(v) => `${Math.round(v / 1000)} mil`}
+                    tickFormatter={(v) => `${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil`}
                   />
                   <Tooltip
                     labelFormatter={(v) => `Ano ${v}`}
@@ -240,24 +240,28 @@ export default function Independence({
                   />
                   <Legend />
                   <Line
+                    isAnimationActive={false}
                     dataKey="invested"
                     name="Capital aportado"
                     stroke="#b09144"
                     dot={false}
                   />
                   <Line
+                    isAnimationActive={false}
                     dataKey="growth"
                     name="Crescimento hipotético"
                     stroke="#7b6b9e"
                     dot={false}
                   />
                   <Line
+                    isAnimationActive={false}
                     dataKey="balance"
                     name="Valor nominal"
                     stroke="#205c47"
                     dot={false}
                   />
                   <Line
+                    isAnimationActive={false}
                     dataKey="real"
                     name="Poder de compra atual"
                     stroke="#217caa"

@@ -3160,3 +3160,5 @@ dialog:has(.asset-assistant) {
     grid-template-columns: 1fr;
   }
 }
+.independence-form { padding: 24px; }
+.independence-form > .field { margin: 18px 0; }
