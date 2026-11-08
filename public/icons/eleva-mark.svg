@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#123e33"/>
+  <path d="M164 288 L330 122 M220 122 H330 V232" fill="none" stroke="#d4b873" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M164 182 V288 H270" fill="none" stroke="#d4b873" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+  <text x="256" y="382" fill="#f8f5ec" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="64" font-weight="700" letter-spacing="7">ELEVA</text>
+</svg>
