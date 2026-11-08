@@ -466,3 +466,27 @@ test("edição cadastral preserva precisão de saldos anteriores sem arredondame
   assert.equal(saved.openingInvested, 333.333);
   assert.equal(saved.current, 350.123);
 });
+
+test("perdas reais e perda total são posições válidas para todos os tipos", () => {
+  for (const type of Object.keys(investmentCatalog)) {
+    for (const current of ["0", "1", "500"]) {
+      const a = prepareAsset(empty(), draft(type, { current }), undefined, date);
+      assert.equal(a.current, Number(current));
+      assert.ok(position(a, []).unrealized < 0);
+      assert.ok(validateV2({ ...empty(), assets: [a] }));
+      const edit = createAssetDraft(a, "ignored");
+      assert.equal(edit.current, current);
+      const edited = prepareAsset({ ...empty(), assets: [a] }, { ...edit, name: "Renomeado" }, a.id, date);
+      assert.equal(edited.current, Number(current));
+    }
+  }
+});
+
+test("saldo inválido não altera a carteira nem vira perda confirmável", () => {
+  const d = state();
+  const before = structuredClone(d);
+  for (const current of ["-1", "NaN", "Infinity", "abc", "1000000000001", "1.001", ""]) {
+    assert.throws(() => prepareAsset(d, { ...createAssetDraft(d.assets[0], "ignored"), current }, "new", date));
+    assert.deepEqual(d, before);
+  }
+});

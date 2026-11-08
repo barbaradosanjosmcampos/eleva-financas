@@ -70,6 +70,8 @@ export default function AssetForm({
   const [review, setReview] = useState<Asset | null>(null);
   const [saved, setSaved] = useState(false);
   const saveLock = useRef(false);
+  // Editing (including clearing) the balance opts out for this entire draft.
+  const currentEdited = useRef(false);
   const guided = mode === "guided";
   const kind = draft.investmentType
     ? investmentCatalog[draft.investmentType]
@@ -80,7 +82,17 @@ export default function AssetForm({
     data.operations.some((o) => o.assetId === asset.id && o.type !== "income");
   const p = asset ? position(asset, data.operations) : null;
   const change = (key: keyof AssetDraft, value: string) => {
-    setDraft((d) => ({ ...d, [key]: value }));
+    if (key === "current") currentEdited.current = true;
+    setDraft((d) => ({
+      ...d,
+      [key]: value,
+      ...(!asset &&
+      d.trackingMode === "value" &&
+      key === "openingInvested" &&
+      !currentEdited.current
+        ? { current: value }
+        : {}),
+    }));
     setError("");
     setReview(null);
   };
@@ -155,6 +167,7 @@ export default function AssetForm({
     )
       return;
     const sample = investmentCatalog[draft.investmentType].example;
+    currentEdited.current = true;
     setDraft((d) => ({
       ...d,
       ...sample,
@@ -188,6 +201,22 @@ export default function AssetForm({
         setReview(prepared);
         setStep(3);
         return;
+      }
+      const basis = position(prepared, data.operations).basis;
+      if (prepared.current < basis) {
+        const loss = basis - prepared.current;
+        const percentage = new Intl.NumberFormat("pt-BR", {
+          maximumFractionDigits: 2,
+        }).format((loss / basis) * 100);
+        const warning =
+          prepared.current === 0
+            ? "O saldo atual é zero. Isso representa uma perda de 100% do capital aplicado."
+            : "O saldo atual é menor que o capital aplicado. Perdas reais são possíveis.";
+        if (
+          !window.confirm(
+            `${warning}\nCapital aplicado remanescente: ${money(basis)}.\nSaldo atual: ${money(prepared.current)}.\nPerda: ${money(loss)} (${percentage}%).\n\nConfirma que deseja salvar este saldo${prepared.current === 0 ? " zero e registrar a perda de 100%" : " com perda"}? Cancelar mantém o formulário sem salvar.`,
+          )
+        ) return;
       }
       const next = {
         ...data,
@@ -608,7 +637,7 @@ export default function AssetForm({
             )}
             {field(
               byValue ? "Saldo atualizado (R$)" : "Valor atual da posição (R$)",
-              "Onde encontro essa informação? Procure saldo atualizado ou posição atual no extrato. Use o total, não o preço de uma cota. Exclua proventos já pagos fora da posição.",
+              "Onde encontro essa informação? Procure saldo atualizado ou posição atual no extrato. Use o total, não o preço de uma cota. Exclua proventos já pagos fora da posição. Em novos cadastros por valor, sugerimos o valor aplicado até você editar este saldo. Ele pode ser menor que o capital, inclusive zero; perdas exigem confirmação antes de salvar.",
               "Capital de R$ 10.000 e saldo de R$ 10.350: valorização de R$ 350.",
               <input
                 type="number"
