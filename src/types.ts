@@ -30,7 +30,8 @@ export type Page =
   | "transactions"
   | "investments"
   | "goals"
-  | "simulator";
+  | "simulator"
+  | "independence";
 
 export type TrackingMode = "units" | "value";
 export type InvestmentType =

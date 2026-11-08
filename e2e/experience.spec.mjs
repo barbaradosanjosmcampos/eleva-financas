@@ -115,6 +115,7 @@ test("primeiro acesso oferece escolha, carteira vazia e guia reutilizável", asy
   await page
     .getByRole("button", { name: "Começar do zero", exact: false })
     .click();
+  await page.getByRole("button", { name: "Acompanhar meus investimentos", exact: true }).click();
   await expect(page.getByLabel("Modo atual")).toHaveValue("personal");
   await expect(
     page.getByRole("button", {
@@ -155,6 +156,7 @@ test("confirma cadastro e edição com nome e próximo passo sem duplicar", asyn
   await page
     .getByRole("button", { name: "Começar do zero", exact: false })
     .click();
+  await page.getByRole("button", { name: "Acompanhar meus investimentos", exact: true }).click();
   await page
     .getByRole("button", {
       name: "Cadastrar meu primeiro investimento",
@@ -397,6 +399,7 @@ test("falha de gravação não confirma cadastro e uma nova tentativa não dupli
   await page
     .getByRole("button", { name: "Começar do zero", exact: false })
     .click();
+  await page.getByRole("button", { name: "Acompanhar meus investimentos", exact: true }).click();
   await page.evaluate(() => {
     window.originalElevaSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function (k, v) {

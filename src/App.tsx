@@ -18,6 +18,7 @@ import Transactions from "./pages/Transactions";
 import Investments from "./pages/Investments";
 import Goals from "./pages/Goals";
 import Simulator from "./pages/Simulator";
+import Independence from "./pages/Independence";
 import Welcome from "./components/experience/Welcome";
 import BackupManager from "./components/experience/BackupManager";
 const navigation = [
@@ -25,6 +26,7 @@ const navigation = [
   { id: "transactions", label: "Receitas e Despesas", icon: ArrowLeftRight },
   { id: "investments", label: "Investimentos", icon: ChartNoAxesCombined },
   { id: "goals", label: "Metas Financeiras", icon: Target },
+  { id: "independence", label: "Independência Financeira", icon: Target },
   { id: "simulator", label: "Simulador Patrimonial", icon: Calculator },
 ] as const;
 function currentPage(): Page {
@@ -34,6 +36,7 @@ function currentPage(): Page {
 export default function App() {
   const [page, setPage] = useState<Page>(currentPage);
   const [menu, setMenu] = useState(false);
+  const [journey, setJourney] = useState(false);
   const {
     data,
     mode,
@@ -174,6 +177,14 @@ export default function App() {
                 </>
               )}
             </div>
+            {mode && (
+              <button
+                className="secondary"
+                onClick={() => setJourney((v) => !v)}
+              >
+                Mudar de caminho
+              </button>
+            )}
             <BackupManager exportBackup={exportBackup} onRestore={restore} />
           </div>
           {mode && (
@@ -203,10 +214,12 @@ export default function App() {
           {mode === null ? (
             <Welcome
               onChoose={(selected) => {
-                if (switchMode(selected))
+                if (switchMode(selected)) {
+                  setJourney(selected === "personal");
                   navigate(
                     selected === "personal" ? "investments" : "dashboard",
                   );
+                }
               }}
             />
           ) : (
@@ -215,6 +228,51 @@ export default function App() {
               className="app-content"
               disabled={storageBlocked}
             >
+              {journey && (
+                <section
+                  className="panel journey"
+                  aria-label="Escolha seu caminho"
+                >
+                  <h2>Por onde você quer começar?</h2>
+                  <p>
+                    Você pode mudar de caminho a qualquer momento, sem perder
+                    seus registros.
+                  </p>
+                  <div className="scenario-grid">
+                    {(
+                      [
+                        ["transactions", "Organizar minhas finanças"],
+                        ["investments", "Acompanhar meus investimentos"],
+                        [
+                          "independence",
+                          "Planejar minha independência financeira",
+                        ],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        className="secondary"
+                        onClick={() => {
+                          setJourney(false);
+                          navigate(id);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {page === "independence" && (
+                <Independence
+                  portfolioValue={data.assets.reduce(
+                    (sum, a) => sum + a.current,
+                    0,
+                  )}
+                  mode={mode}
+                  legacyImported={session.legacyImported}
+                />
+              )}
               {page === "dashboard" && (
                 <Dashboard data={data} navigate={navigate} />
               )}{" "}
