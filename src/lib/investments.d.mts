@@ -10,6 +10,7 @@ export const incomeLabels: Record<
   NonNullable<InvestmentOperation["incomeType"]>,
   string
 >;
+export function trackingMode(asset: Asset): "units" | "value";
 export function isEntry(type: string): boolean;
 export function isExit(type: string): boolean;
 export function validDate(date: unknown): boolean;

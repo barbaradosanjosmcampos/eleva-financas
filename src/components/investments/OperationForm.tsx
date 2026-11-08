@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Modal, Field } from "../ui";
+import { useRef, useState } from "react";
+import { Modal } from "../ui";
+import Field from "./TeachingField";
 import type { FinanceData, IncomeType, OperationType } from "../../types";
 import { today, money } from "../../lib/format";
 import {
@@ -7,6 +8,8 @@ import {
   incomeLabels,
   operationLabels,
   position,
+  trackingMode,
+  isExit,
 } from "../../lib/investments.mjs";
 export default function OperationForm({
   data,
@@ -24,27 +27,51 @@ export default function OperationForm({
     incomeOnly ? "income" : "buy",
   );
   const [error, setError] = useState("");
+  const [id] = useState(() => crypto.randomUUID());
+  const submitting = useRef(false);
   const asset = data.assets.find((a) => a.id === assetId);
+  const byValue = asset ? trackingMode(asset) === "value" : false;
+  const effectiveType =
+    byValue && type === "buy"
+      ? "contribution"
+      : byValue && type === "sell"
+        ? "redemption"
+        : type;
   const p = asset ? position(asset, data.operations) : null;
   const last = data.operations.filter((o) => o.assetId === assetId).at(-1);
   const minimum = last?.date ?? asset?.openingDate;
+  const labels = byValue
+    ? { contribution: "Aporte", redemption: "Resgate", income: "Provento" }
+    : operationLabels;
   function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     const f = new FormData(e.currentTarget);
     try {
       const next = appendOperation(
         data,
         {
-          id: crypto.randomUUID(),
+          id,
           assetId,
-          type,
+          type: effectiveType,
           incomeType:
-            type === "income" ? (f.get("incomeType") as IncomeType) : null,
+            effectiveType === "income"
+              ? (f.get("incomeType") as IncomeType)
+              : null,
           date: String(f.get("date")),
           amount: Number(f.get("amount")),
-          quantity: type === "income" ? null : Number(f.get("quantity")),
+          quantity:
+            effectiveType === "income" || byValue
+              ? null
+              : Number(f.get("quantity")),
+          redeemedPrincipal:
+            byValue && isExit(effectiveType)
+              ? Number(f.get("redeemedPrincipal"))
+              : null,
           currentAfter:
-            type === "income" ? null : Number(f.get("currentAfter")),
+            effectiveType === "income" ? null : Number(f.get("currentAfter")),
+          reference: String(f.get("reference")).trim(),
           note: String(f.get("note")).trim(),
         },
         today(),
@@ -52,6 +79,7 @@ export default function OperationForm({
       onSave(next);
       onClose();
     } catch (error) {
+      submitting.current = false;
       setError(
         error instanceof Error
           ? error.message
@@ -65,7 +93,10 @@ export default function OperationForm({
       onClose={onClose}
     >
       <form onSubmit={save}>
-        <Field label="Ativo">
+        <Field
+          label="Ativo"
+          help="Selecione a posição que recebeu esta movimentação."
+        >
           <select
             value={assetId}
             onChange={(e) => {
@@ -81,15 +112,18 @@ export default function OperationForm({
           </select>
         </Field>
         {!incomeOnly && (
-          <Field label="Tipo de operação">
+          <Field
+            label="Tipo de operação"
+            help="Aporte e compra são alternativas para a mesma entrada de capital; não registre as duas para o mesmo movimento."
+          >
             <select
-              value={type}
+              value={effectiveType}
               onChange={(e) => {
                 setType(e.target.value as OperationType);
                 setError("");
               }}
             >
-              {Object.entries(operationLabels).map(([value, label]) => (
+              {Object.entries(labels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -97,8 +131,11 @@ export default function OperationForm({
             </select>
           </Field>
         )}
-        {type === "income" && (
-          <Field label="Tipo de provento">
+        {effectiveType === "income" && (
+          <Field
+            label="Tipo de provento"
+            help="Pagamento recebido em dinheiro, separado da valorização da posição."
+          >
             <select name="incomeType">
               {Object.entries(incomeLabels).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -109,7 +146,10 @@ export default function OperationForm({
           </Field>
         )}
         <div className="form-grid">
-          <Field label="Data da operação">
+          <Field
+            label="Data da operação"
+            help="Registre em ordem de data por ativo, a partir da posição inicial."
+          >
             <input
               name="date"
               type="date"
@@ -121,10 +161,15 @@ export default function OperationForm({
           </Field>
           <Field
             label={
-              type === "income"
+              effectiveType === "income"
                 ? "Valor recebido (R$)"
-                : "Valor total da operação (R$)"
+                : byValue
+                  ? isExit(effectiveType)
+                    ? "Valor recebido no resgate (R$)"
+                    : "Valor do aporte (R$)"
+                  : "Valor total da operação (R$)"
             }
+            help="Na entrada, total pago incluindo custos. Na saída ou provento, valor líquido recebido."
           >
             <input
               name="amount"
@@ -136,28 +181,60 @@ export default function OperationForm({
             />
           </Field>
         </div>
-        {type !== "income" && (
+        {effectiveType !== "income" && (
           <>
-            <Field label="Quantidade movimentada">
-              <input
-                name="quantity"
-                type="number"
-                required
-                min="0.000001"
-                max="1000000000000"
-                step="0.000001"
-              />
-            </Field>
-            <p className="form-help">
-              Quantidade disponível:{" "}
-              {p?.quantity === null
-                ? "não informada — complete a posição inicial em Editar ativo"
-                : p?.quantity.toLocaleString("pt-BR", {
-                    maximumFractionDigits: 6,
-                  })}
-              . Em renda fixa, use unidades consistentes (por exemplo, cotas).
-            </p>
-            <Field label="Valor atual total após a operação (R$)">
+            {byValue ? (
+              <div className="form-help">
+                Controle por valor: não há quantidade ou preço por unidade.
+                Capital remanescente: <strong>{money(p?.basis ?? 0)}</strong>.
+              </div>
+            ) : (
+              <>
+                <Field
+                  label="Quantidade movimentada"
+                  help="Número de cotas ou unidades compradas ou vendidas. Não é um valor em reais."
+                >
+                  <input
+                    name="quantity"
+                    type="number"
+                    required
+                    min="0.000001"
+                    max="1000000000000"
+                    step="0.000001"
+                  />
+                </Field>
+                <p className="form-help">
+                  Quantidade disponível:{" "}
+                  {p?.quantity === null
+                    ? "não informada — complete a posição inicial em Editar ativo"
+                    : p?.quantity.toLocaleString("pt-BR", {
+                        maximumFractionDigits: 6,
+                      })}
+                  .
+                </p>
+              </>
+            )}
+            {byValue && isExit(effectiveType) && (
+              <Field
+                label="Capital resgatado (R$)"
+                help="Parcela do custo aplicado que saiu da posição, conforme a instituição. Não é necessariamente o dinheiro recebido. A diferença apura o resultado do resgate."
+                example="Capital de R$ 10.000, saldo de R$ 11.000: um resgate proporcional de R$ 2.200 pode baixar R$ 2.000 de capital. Use os valores do seu extrato, não essa proporção como regra."
+                guided
+              >
+                <input
+                  name="redeemedPrincipal"
+                  type="number"
+                  required
+                  min="0"
+                  max={p?.basis ?? 0}
+                  step="0.01"
+                />
+              </Field>
+            )}
+            <Field
+              label="Valor atual total após a operação (R$)"
+              help="Saldo total da posição hoje após a movimentação. Esse valor já inclui a operação e não será somado novamente."
+            >
               <input
                 name="currentAfter"
                 required
@@ -168,23 +245,39 @@ export default function OperationForm({
               />
             </Field>
             <p className="form-help">
-              Confirme o saldo total do ativo hoje após esta operação. Não
-              somamos o valor da operação ao saldo informado. Valor anterior:{" "}
-              {money(asset?.current ?? 0)}.
+              Valor anterior: {money(asset?.current ?? 0)}.
+              {byValue && isExit(effectiveType)
+                ? " Para resgate total, informe todo o capital remanescente em Capital resgatado e saldo final zero. Se não souber a parcela de capital, consulte a instituição antes de registrar."
+                : ""}
             </p>
           </>
         )}
-        <Field label="Observação (opcional)">
+        <Field
+          label="Referência da operação (opcional)"
+          help="Identificador do extrato. Referências repetidas são bloqueadas. Para operações legítimas com mesmos dados, use referências distintas."
+        >
+          <input
+            name="reference"
+            maxLength={100}
+            placeholder="Ex.: ordem 123 ou resgate 456"
+          />
+        </Field>
+        <Field
+          label="Observação (opcional)"
+          help="Um lembrete para identificar a movimentação; não altera os cálculos."
+        >
           <input
             name="note"
             maxLength={180}
-            placeholder="Ex.: Compra incluindo taxas ou venda líquida"
+            placeholder="Ex.: Compra incluindo taxas ou resgate líquido"
           />
         </Field>
         <div className="form-help">
-          {type === "income"
-            ? "Proventos são dinheiro recebido, separado da valorização. Não alteram o valor dos ativos nem os lançamentos do Dashboard. Para reinvestir, registre uma compra ou aporte posterior."
-            : "Compra e aporte representam a mesma entrada de capital: escolha apenas um. Venda e resgate reduzem a posição pelo custo médio. Nas entradas, informe o total pago incluindo custos; nas saídas, o líquido recebido. Registre em ordem de data por ativo, a partir da posição inicial."}
+          {effectiveType === "income"
+            ? "Proventos são dinheiro recebido. Não alteram o capital ou o saldo dos ativos nem os lançamentos do Dashboard. Para reinvestir, registre uma compra ou aporte posterior."
+            : byValue
+              ? "Aporte aumenta o capital. No resgate, o valor recebido e o capital baixado são separados para não confundir fluxo de caixa com rendimento. A posição inicial já contém as aplicações anteriores: não as repita."
+              : "Compra e aporte representam a mesma entrada de capital: escolha apenas um. Saídas baixam custo médio. A posição inicial já contém compras anteriores: não as repita."}
         </div>
         {error && (
           <p role="alert" className="form-error">
@@ -196,7 +289,7 @@ export default function OperationForm({
             Cancelar
           </button>
           <button className="primary">
-            Registrar {type === "income" ? "provento" : "operação"}
+            Registrar {effectiveType === "income" ? "provento" : "operação"}
           </button>
         </div>
       </form>

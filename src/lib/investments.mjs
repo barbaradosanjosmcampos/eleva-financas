@@ -25,9 +25,11 @@ const finite = (n, min = 0) =>
   typeof n === "number" && Number.isFinite(n) && n >= min && n <= 1e12;
 const text = (s) => typeof s === "string";
 
+export const trackingMode = (asset) => asset.trackingMode ?? "units";
 export function position(asset, operations) {
+  const byValue = trackingMode(asset) === "value";
   let basis = asset.openingInvested;
-  let quantity = asset.openingQuantity;
+  let quantity = byValue ? null : asset.openingQuantity;
   let contributed = asset.openingInvested;
   let proceeds = 0;
   let realized = 0;
@@ -48,37 +50,71 @@ export function position(asset, operations) {
       if (
         !Object.hasOwn(incomeLabels, o.incomeType) ||
         o.quantity !== null ||
-        o.currentAfter !== null
+        o.currentAfter !== null ||
+        o.redeemedPrincipal != null
       )
         throw new Error("Provento inválido.");
       income += o.amount;
       cashFlow += o.amount;
       continue;
     }
-    if (quantity === null)
-      throw new Error(
-        "Informe a quantidade da posição inicial antes de registrar compras, vendas, aportes ou resgates.",
-      );
-    if (!finite(o.quantity, 0.000001) || !finite(o.currentAfter))
-      throw new Error("Informe quantidade e valor atual após a operação.");
-    if (isEntry(o.type)) {
-      quantity += o.quantity;
-      basis += o.amount;
-      contributed += o.amount;
-      cashFlow -= o.amount;
-    } else if (isExit(o.type)) {
-      if (o.quantity > quantity + 1e-8)
-        throw new Error("A quantidade de saída excede a posição disponível.");
-      const fullExit = Math.abs(o.quantity - quantity) < 1e-8;
-      const removedBasis = fullExit ? basis : (basis * o.quantity) / quantity;
-      quantity = fullExit ? 0 : quantity - o.quantity;
-      basis = fullExit ? 0 : basis - removedBasis;
-      proceeds += o.amount;
-      realized += o.amount - removedBasis;
-      cashFlow += o.amount;
-    } else throw new Error("Tipo de operação inválido.");
-    if (quantity === 0 && o.currentAfter !== 0)
-      throw new Error("Uma posição zerada precisa ter valor atual zero.");
+    if (!finite(o.currentAfter))
+      throw new Error("Informe o valor atual após a operação.");
+    if (byValue) {
+      if (o.quantity !== null)
+        throw new Error("Posições por valor não utilizam quantidades.");
+      if (isEntry(o.type)) {
+        if (o.redeemedPrincipal != null)
+          throw new Error("Aportes não baixam capital.");
+        basis += o.amount;
+        contributed += o.amount;
+        cashFlow -= o.amount;
+      } else if (isExit(o.type)) {
+        if (!finite(o.redeemedPrincipal) || o.redeemedPrincipal > basis + 1e-8)
+          throw new Error(
+            "Informe o capital resgatado, sem exceder o capital remanescente.",
+          );
+        const removedBasis =
+          Math.abs(o.redeemedPrincipal - basis) < 1e-8
+            ? basis
+            : o.redeemedPrincipal;
+        basis -= removedBasis;
+        if (o.currentAfter === 0 && basis > 1e-8)
+          throw new Error(
+            "Para encerrar a posição com saldo zero, baixe todo o capital remanescente.",
+          );
+        proceeds += o.amount;
+        realized += o.amount - removedBasis;
+        cashFlow += o.amount;
+      } else throw new Error("Tipo de operação inválido.");
+    } else {
+      if (quantity === null)
+        throw new Error(
+          "Informe a quantidade da posição inicial antes de registrar compras, vendas, aportes ou resgates.",
+        );
+      if (!finite(o.quantity, 0.000001) || o.redeemedPrincipal != null)
+        throw new Error(
+          "Informe uma quantidade válida para a operação por unidades.",
+        );
+      if (isEntry(o.type)) {
+        quantity += o.quantity;
+        basis += o.amount;
+        contributed += o.amount;
+        cashFlow -= o.amount;
+      } else if (isExit(o.type)) {
+        if (o.quantity > quantity + 1e-8)
+          throw new Error("A quantidade de saída excede a posição disponível.");
+        const fullExit = Math.abs(o.quantity - quantity) < 1e-8;
+        const removedBasis = fullExit ? basis : (basis * o.quantity) / quantity;
+        quantity = fullExit ? 0 : quantity - o.quantity;
+        basis = fullExit ? 0 : basis - removedBasis;
+        proceeds += o.amount;
+        realized += o.amount - removedBasis;
+        cashFlow += o.amount;
+      } else throw new Error("Tipo de operação inválido.");
+      if (quantity === 0 && o.currentAfter !== 0)
+        throw new Error("Uma posição zerada precisa ter valor atual zero.");
+    }
   }
   const unrealized = asset.current - basis;
   const priceResult = unrealized + realized;
@@ -144,6 +180,28 @@ export function appendOperation(data, operation, recordedDate) {
     throw new Error("Não é possível registrar operações futuras.");
   if (data.operations.some((o) => o.id === operation.id))
     throw new Error("Esta operação já foi registrada.");
+  const reference = (value) =>
+    (value ?? "").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
+  const ref = reference(operation.reference);
+  const kind = (type) =>
+    isEntry(type) ? "entry" : isExit(type) ? "exit" : type;
+  if (
+    data.operations.some(
+      (o) =>
+        o.assetId === asset.id &&
+        ((ref && reference(o.reference) === ref) ||
+          ((!ref || reference(o.reference) === ref) &&
+            o.date === operation.date &&
+            kind(o.type) === kind(operation.type) &&
+            o.incomeType === operation.incomeType &&
+            o.amount === operation.amount &&
+            o.quantity === operation.quantity)),
+    )
+  ) {
+    throw new Error(
+      "Uma operação com estes dados já foi registrada. Não repita compra como aporte ou venda como resgate. Para operações legítimas iguais, informe referências diferentes do extrato.",
+    );
+  }
   const last = data.operations.filter((o) => o.assetId === asset.id).at(-1);
   if (last && operation.date < last.date)
     throw new Error("Registre as operações em ordem de data para este ativo.");
@@ -160,6 +218,8 @@ export function appendOperation(data, operation, recordedDate) {
       a.id === asset.id ? { ...a, invested: p.basis, current } : a,
     ),
   };
+  if (!validateV2(next))
+    throw new Error("A operação não passou pela validação de integridade.");
   // Only an explicitly supplied asset valuation creates a portfolio observation.
   return operation.type === "income"
     ? next
@@ -228,6 +288,26 @@ export function validateV2(data) {
           text(a.institution) &&
           validDate(a.openingDate) &&
           finite(a.openingInvested) &&
+          (a.trackingMode === undefined ||
+            ["units", "value"].includes(a.trackingMode)) &&
+          (a.investmentType === undefined ||
+            [
+              "fixed-income",
+              "treasury",
+              "stocks",
+              "etf",
+              "fii",
+              "other",
+            ].includes(a.investmentType)) &&
+          (trackingMode(a) !== "value" ||
+            (a.openingQuantity === null &&
+              (a.investmentType
+                ? ["fixed-income", "treasury", "other"].includes(
+                    a.investmentType,
+                  )
+                : ["Renda fixa", "Tesouro Direto", "Outros"].includes(
+                    a.category,
+                  )))) &&
           (a.openingQuantity === null || finite(a.openingQuantity)),
       )
     )
@@ -244,6 +324,8 @@ export function validateV2(data) {
           text(o.id) &&
           !!o.id &&
           text(o.note) &&
+          (o.reference === undefined ||
+            (text(o.reference) && o.reference.length <= 100)) &&
           data.assets.some((a) => a.id === o.assetId) &&
           Object.hasOwn(operationLabels, o.type) &&
           (o.type === "income" || o.incomeType === null),

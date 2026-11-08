@@ -10,7 +10,12 @@ import {
 import type { FinanceData, Asset, Page } from "../types";
 import { money, percent, today, dateLabel } from "../lib/format";
 import { Stat, Modal, Field, Empty, DeleteButton } from "../components/ui";
-import { consolidate, position, recordSnapshot } from "../lib/investments.mjs";
+import {
+  consolidate,
+  position,
+  recordSnapshot,
+  trackingMode,
+} from "../lib/investments.mjs";
 import AssetForm from "../components/investments/AssetForm";
 import OperationForm from "../components/investments/OperationForm";
 import PortfolioCharts from "../components/investments/PortfolioCharts";
@@ -178,7 +183,7 @@ export default function Investments({
         <div className="panel-heading">
           <div>
             <h3>Meus ativos</h3>
-            <p>Posições e custo médio · {data.assets.length} ativos</p>
+            <p>Por valor ou por unidades · {data.assets.length} ativos</p>
           </div>
           <span className="tag">Valores manuais</span>
         </div>
@@ -214,15 +219,19 @@ export default function Investments({
                       <span className="tag">{a.category}</span>
                     </td>
                     <td>
-                      {p.quantity === null
-                        ? "Não informada"
-                        : p.quantity.toLocaleString("pt-BR", {
-                            maximumFractionDigits: 6,
-                          })}
+                      {trackingMode(a) === "value"
+                        ? "Por valor"
+                        : p.quantity === null
+                          ? "Não informada"
+                          : p.quantity.toLocaleString("pt-BR", {
+                              maximumFractionDigits: 6,
+                            })}
                       <small className="block muted">
-                        {p.averagePrice === null
-                          ? "Preço médio indisponível"
-                          : money(p.averagePrice)}
+                        {trackingMode(a) === "value"
+                          ? "Quantidade não se aplica"
+                          : p.averagePrice === null
+                            ? "Preço médio indisponível"
+                            : money(p.averagePrice)}
                       </small>
                     </td>
                     <td>{money(p.basis)}</td>
@@ -323,9 +332,9 @@ export default function Investments({
             capital existente em{" "}
             {data.assets.length ? "cada data de abertura" : "sua carteira"}.
             Compra e aporte são duas formas de registrar uma entrada, nunca duas
-            etapas da mesma entrada. Vendas e resgates baixam o custo
-            proporcional pelo preço médio; não são receitas de rentabilidade em
-            sua totalidade.
+            etapas da mesma entrada. Saídas por unidades baixam o custo médio
+            proporcional. Resgates por valor baixam o capital informado no
+            extrato. O valor recebido não é rendimento em sua totalidade.
           </p>
           <p>
             <strong>Preço, retorno e caixa.</strong> A variação de preços soma

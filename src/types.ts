@@ -32,7 +32,17 @@ export type Page =
   | "goals"
   | "simulator";
 
+export type TrackingMode = "units" | "value";
+export type InvestmentType =
+  | "fixed-income"
+  | "treasury"
+  | "stocks"
+  | "etf"
+  | "fii"
+  | "other";
 export type Asset = LegacyAsset & {
+  trackingMode?: TrackingMode;
+  investmentType?: InvestmentType;
   code: string;
   institution: string;
   openingDate: string;
@@ -51,6 +61,8 @@ export type InvestmentOperation = {
   assetId: string;
   type: OperationType;
   incomeType: IncomeType | null;
+  redeemedPrincipal?: number | null;
+  reference?: string;
   date: string;
   amount: number;
   quantity: number | null;
