@@ -3246,3 +3246,45 @@ dialog:has(.asset-assistant) {
 .wealth-education > details { margin: 16px 0; }
 .withdrawal-warning { color: #594820; font-size: 0.95rem; }
 @media (max-width: 600px) { .wealth-education { padding: 18px; } }
+
+/* Install and update controls stay in the document flow, clear of finance forms. */
+.pwa-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+.pwa-controls:empty { display: none; }
+.pwa-install { font-size: 12px; }
+.pwa-update { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #d4b873; border-radius: 10px; background: #f8f5ec; color: #123e33; }
+.pwa-message { width: 100%; font-size: 13px; }
+.pwa-help { display: grid; gap: 18px; line-height: 1.7; overflow-wrap: anywhere; }
+.pwa-help ol { margin: 0; padding-left: 24px; }
+.pwa-help li + li { margin-top: 12px; }
+.pwa-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.sidebar { padding-bottom: max(20px, env(safe-area-inset-bottom)); overflow-y: auto; }
+.topbar { padding-top: env(safe-area-inset-top); height: calc(81px + env(safe-area-inset-top)); }
+main { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.table-scroll, .independence-table { overscroll-behavior-x: contain; }
+.panel, .chart, .portfolio-charts > *, .table-scroll { min-width: 0; max-width: 100%; }
+dialog { max-width: calc(100vw - 24px); }
+@media (max-width: 700px) {
+  .topbar { height: auto; min-height: calc(66px + env(safe-area-inset-top)); gap: 8px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  .breadcrumb { min-width: 0; }
+  .breadcrumb strong { overflow-wrap: anywhere; }
+  .topbar-right { flex-shrink: 0; }
+  .topbar .avatar { display: none; }
+  main { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  button, .primary, .secondary, .icon-button, .text-button, summary { min-height: 44px; }
+  .icon-button { min-width: 44px; }
+  input, select, textarea { font-size: 16px; min-height: 44px; }
+  .search input { font-size: 16px; }
+  .section-heading { flex-wrap: wrap; }
+  .section-heading > *, .experience-controls > *, .pwa-controls > * { min-width: 0; max-width: 100%; }
+  .experience-controls { flex-wrap: wrap; }
+  .stat strong { font-size: clamp(18px, 5vw, 23px); overflow-wrap: anywhere; }
+  .form-grid { grid-template-columns: 1fr; }
+  dialog { padding: 20px 16px; max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  .modal-heading { gap: 10px; }
+  .modal-heading h2 { min-width: 0; overflow-wrap: anywhere; font-size: 22px; }
+  .pwa-update { width: 100%; }
+  .pwa-actions > button { width: 100%; white-space: normal; }
+  /* Pin chart details inside the plot on touch screens, including after rotation. */
+  .recharts-tooltip-wrapper { transform: none !important; top: 8px !important; left: 8px !important; max-width: calc(100% - 16px); }
+  .recharts-default-tooltip { white-space: normal !important; overflow-wrap: anywhere; }
+}

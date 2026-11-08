@@ -2,6 +2,8 @@
 
 Aplicativo web de organização financeira pessoal, em português do Brasil. React 19, TypeScript e Vite, com interface responsiva em verde-escuro, branco e dourado.
 
+Agora inclui instalação como PWA em navegadores compatíveis, com instruções para Android/iPhone e aviso de nova versão. Consulte [instalação, dados locais, atualizações e testes do PWA](docs/PWA.md). Não há promessa de operação offline completa; exporte um backup JSON antes de instalar ou trocar de navegador.
+
 ## Executar
 
 Requisitos: Node.js 22.12+ e npm (validado com Node.js 24).

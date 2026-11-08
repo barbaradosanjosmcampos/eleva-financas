@@ -21,6 +21,7 @@ import Simulator from "./pages/Simulator";
 import Independence from "./pages/Independence";
 import Welcome from "./components/experience/Welcome";
 import BackupManager from "./components/experience/BackupManager";
+import PwaControls from "./components/PwaControls";
 const navigation = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "transactions", label: "Receitas e Despesas", icon: ArrowLeftRight },
@@ -157,6 +158,7 @@ export default function App() {
           </div>
         </header>
         <main id="main-content">
+          <PwaControls />
           <div className="experience-controls">
             <div>
               {mode && (
