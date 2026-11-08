@@ -3122,3 +3122,104 @@ dialog:has(.asset-assistant) {
 .example-readonly .text-button {
   color: #a18b50;
 }
+
+/* ELEVA Independência: readable forms and annual comparisons at every width. */
+.independence-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 24px;
+  margin: 24px 0;
+  align-items: start;
+}
+.independence-results {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.independence-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.scenario-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d7dfce;
+  border-radius: 12px;
+}
+.scenario-card button {
+  width: 100%;
+  padding: 10px 4px;
+}
+.scenario-card input {
+  width: 100%;
+  min-width: 0;
+}
+.independence-layout details {
+  margin: 16px 0;
+  line-height: 1.6;
+}
+.independence-layout summary {
+  cursor: pointer;
+  color: #174f40;
+  font-weight: 600;
+}
+.independence-layout p {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.independence-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.independence-table table {
+  min-width: 650px;
+}
+.independence-stats .stat strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(18px, 2vw, 28px);
+}
+.journey {
+  margin-bottom: 24px;
+}
+@media (max-width: 1100px) {
+  .independence-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .scenario-grid,
+  .independence-stats {
+    grid-template-columns: 1fr;
+  }
+  .experience-controls {
+    flex-wrap: wrap;
+  }
+}
+.independence-layout > .simulation-form,
+.independence-results > .panel,
+.journey {
+  padding: 24px;
+}
+.independence-layout .field {
+  margin-top: 16px;
+}
+.independence-layout h3 {
+  margin-bottom: 12px;
+}
+.independence-layout input {
+  max-width: 100%;
+}
+@media (max-width: 600px) {
+  .independence-layout > .simulation-form,
+  .independence-results > .panel,
+  .journey {
+    padding: 18px;
+  }
+}

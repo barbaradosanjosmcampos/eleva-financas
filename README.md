@@ -189,3 +189,15 @@ src/
 ```
 
 Os módulos de cálculo em JavaScript têm declarações TypeScript (`.d.mts`) para consumo tipado pela interface e execução direta no `node:test`. A separação entre estado, modelos, cálculos e telas permite substituir o armazenamento por um serviço no futuro. Esta versão não requer variáveis de ambiente; a variável opcional dos testes apenas seleciona o executável local do navegador.
+
+## ELEVA Independência Financeira
+
+A página **Independência Financeira** mantém o simulador anterior e usa sua mesma função de juros compostos: taxa anual efetiva convertida em mensal e aportes constantes ao fim do mês. O planejamento permite editar patrimônio inicial, aporte, horizonte de 1 a 80 anos, retorno, inflação, renda mensal desejada em reais de hoje, idade opcional e taxa de retirada anual.
+
+Os cenários conservador, intermediário e otimista são hipóteses editáveis, sem promessa de retorno. A tela distingue capital aportado, crescimento (inclusive negativo), saldo nominal e poder de compra. A meta ilustrativa é `renda mensal × 12 ÷ taxa de retirada anual`; a diferença usa patrimônio e meta em reais de hoje. Não é uma simulação de esgotamento nem garantia de renda vitalícia. Não inclui impostos, taxas ou volatilidade.
+
+O total da carteira pessoal só preenche o patrimônio inicial após uma escolha explícita. O botão substitui o valor, sem acumulá-lo; demonstração não importa dados pessoais. Registros migrados mostram um aviso para revisão de possíveis exemplos antigos. As hipóteses são temporárias e reiniciam ao sair da página ou trocar de modo; não entram nos registros ou backups financeiros. O formato de armazenamento e a migração existentes permanecem preservados.
+
+Após **Começar do zero**, três caminhos permitem organizar finanças, acompanhar investimentos ou planejar independência. **Mudar de caminho** reabre a escolha, preservando os registros. O menu lateral continua oferecendo todas as áreas.
+
+Os testes de `tests/independence.test.mjs` verificam fórmulas, inflação, deflação, perdas, limites e cenários. Os testes de `e2e/independence.spec.mjs` exercitam a jornada, importação explícita sem duplicidade, migração v1, isolamento dos modos e layout móvel; usam o comando de Playwright documentado acima.
