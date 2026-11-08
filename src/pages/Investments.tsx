@@ -1,124 +1,237 @@
 import { useState } from "react";
-import { Plus, Pencil } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import type { FinanceData, Asset } from "../types";
-import { money, percent } from "../lib/format";
 import {
-  Stat,
-  Modal,
-  Field,
-  Empty,
-  DeleteButton,
-  chartColors,
-} from "../components/ui";
+  Plus,
+  Pencil,
+  ArrowLeftRight,
+  Coins,
+  Info,
+  Landmark,
+} from "lucide-react";
+import type { FinanceData, Asset, Page } from "../types";
+import { money, percent, today, dateLabel } from "../lib/format";
+import { Stat, Modal, Field, Empty, DeleteButton } from "../components/ui";
+import { consolidate, position, recordSnapshot } from "../lib/investments.mjs";
+import AssetForm from "../components/investments/AssetForm";
+import OperationForm from "../components/investments/OperationForm";
+import PortfolioCharts from "../components/investments/PortfolioCharts";
+import OperationHistory from "../components/investments/OperationHistory";
+import Education from "../components/investments/Education";
 export default function Investments({
   data,
   update,
+  navigate,
 }: {
   data: FinanceData;
   update: (d: FinanceData) => void;
+  navigate: (p: Page) => void;
 }) {
   const [editing, setEditing] = useState<Asset | null>();
-  const invested = data.assets.reduce((s, a) => s + a.invested, 0);
-  const total = data.assets.reduce((s, a) => s + a.current, 0);
-  const allocation = Object.entries(
-    data.assets.reduce<Record<string, number>>(
-      (s, a) => ({ ...s, [a.category]: (s[a.category] ?? 0) + a.current }),
-      {},
-    ),
-  ).map(([name, value]) => ({ name, value }));
-  function save(e: React.FormEvent<HTMLFormElement>) {
+  const [operation, setOperation] = useState<"trade" | "income" | null>(null);
+  const [snapshot, setSnapshot] = useState(false);
+  const [error, setError] = useState("");
+  const t = consolidate(data.assets, data.operations);
+  const groupedIncome = data.operations.filter((o) => o.type === "income");
+  function remove(asset: Asset) {
+    const next = {
+      ...data,
+      assets: data.assets.filter((a) => a.id !== asset.id),
+    };
+    update(
+      recordSnapshot(next, {
+        id: crypto.randomUUID(),
+        date: today(),
+        value: next.assets.reduce((s, a) => s + a.current, 0),
+        source: "recorded",
+        note: "Posição confirmada após remoção de ativo sem operações",
+      }),
+    );
+  }
+  function saveSnapshot(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const a: Asset = {
-      id: editing?.id ?? crypto.randomUUID(),
-      name: String(f.get("name")).trim(),
-      category: String(f.get("category")),
-      invested: Number(f.get("invested")),
-      current: Number(f.get("current")),
-    };
+    const date = String(f.get("date"));
+    if (date > today()) {
+      setError("A data não pode estar no futuro.");
+      return;
+    }
     if (
-      !a.name ||
-      !Number.isFinite(a.invested) ||
-      !Number.isFinite(a.current) ||
-      a.invested <= 0 ||
-      a.current < 0
+      data.snapshots.some((s) => s.date === date) &&
+      !window.confirm(
+        "Já existe uma posição nesta data. Substituir o valor de fechamento?",
+      )
     )
       return;
-    update({
-      ...data,
-      assets: editing
-        ? data.assets.map((x) => (x.id === a.id ? a : x))
-        : [...data.assets, a],
-    });
-    setEditing(undefined);
+    try {
+      update(
+        recordSnapshot(data, {
+          id: crypto.randomUUID(),
+          date,
+          value: Number(f.get("value")),
+          source: "manual",
+          note:
+            String(f.get("note")).trim() ||
+            "Patrimônio total informado manualmente",
+        }),
+      );
+      setSnapshot(false);
+      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Registro inválido.");
+    }
   }
   return (
-    <>
-      <div className="section-heading">
+    <div className="investments-v2">
+      <div className="section-heading investment-heading">
         <div>
-          <h2>Seu patrimônio, em perspectiva</h2>
-          <p>Uma visão organizada dos ativos que você acompanha.</p>
+          <div className="eyebrow">CARTEIRA · VISÃO CONSOLIDADA</div>
+          <h2>
+            Seu patrimônio, em perspectiva<span className="gold">.</span>
+          </h2>
+          <p>
+            Organize sua carteira. Entenda os movimentos. Invista em clareza.
+          </p>
         </div>
         <button className="primary" onClick={() => setEditing(null)}>
           <Plus size={18} />
           Novo ativo
         </button>
       </div>
-      <div className="stats three">
+      <div className="investment-toolbar">
+        <span>
+          <Landmark size={15} />
+          Acompanhamento manual · Sem cotações em tempo real
+        </span>
+        <div>
+          <button
+            className="secondary"
+            disabled={!data.assets.length}
+            onClick={() => setOperation("income")}
+          >
+            <Coins size={16} />
+            Registrar provento
+          </button>
+          <button
+            className="secondary"
+            disabled={!data.assets.length}
+            onClick={() => setOperation("trade")}
+          >
+            <ArrowLeftRight size={16} />
+            Registrar operação
+          </button>
+        </div>
+      </div>
+      <div className="stats">
         <Stat
-          label="Valor da carteira"
-          value={total}
-          detail="Valores atualizados manualmente"
+          label="Patrimônio investido"
+          value={t.current}
+          detail="Soma dos valores atuais informados"
           kind="assets"
         />
         <Stat
-          label="Total investido"
-          value={invested}
-          detail="Capital informado nos seus ativos"
+          label="Total aportado bruto"
+          value={t.contributed}
+          detail="Posição inicial + compras e aportes"
         />
         <Stat
           label="Variação acumulada"
-          value={total - invested}
-          detail={
-            invested
-              ? `${percent((total / invested - 1) * 100)} sobre o valor investido`
-              : "Adicione seu primeiro ativo"
-          }
+          value={t.priceResult}
+          detail="Preços: resultado realizado + não realizado"
+          kind="income"
+        />
+        <Stat
+          label="Proventos recebidos"
+          value={t.income}
+          detail="Dividendos, juros e rendimentos em dinheiro"
           kind="income"
         />
       </div>
-      <div className="investment-grid">
-        <section className="panel">
-          <div className="panel-heading">
+      <section
+        className="performance-strip"
+        aria-label="Indicadores de resultado"
+      >
+        <div>
+          <span>Resultado total</span>
+          <strong>{money(t.result)}</strong>
+          <small>Variação + proventos</small>
+        </div>
+        <div>
+          <span>Retorno simples acumulado</span>
+          <strong>
+            {t.simpleReturn === null ? "—" : percent(t.simpleReturn)}
+          </strong>
+          <small>Resultado ÷ aportado bruto</small>
+        </div>
+        <div>
+          <span>Fluxo de caixa registrado</span>
+          <strong>{money(t.cashFlow)}</strong>
+          <small>Entradas menos saídas; sem posição inicial</small>
+        </div>
+      </section>
+      <PortfolioCharts
+        data={data}
+        onRecord={() => {
+          setSnapshot(true);
+          setError("");
+        }}
+      />
+      <section className="panel holdings-panel">
+        <div className="panel-heading">
+          <div>
             <h3>Meus ativos</h3>
-            <span className="muted">{data.assets.length} ativos</span>
+            <p>Posições e custo médio · {data.assets.length} ativos</p>
           </div>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ativo</th>
-                  <th>Investido</th>
-                  <th>Valor atual</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.assets.map((a) => (
+          <span className="tag">Valores manuais</span>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Ativo / instituição</th>
+                <th>Classe</th>
+                <th>Quantidade / preço médio</th>
+                <th>Valor investido</th>
+                <th>Valor atual</th>
+                <th>Variação em aberto</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.assets.map((a) => {
+                const p = position(a, data.operations);
+                const hasOperations = data.operations.some(
+                  (o) => o.assetId === a.id,
+                );
+                return (
                   <tr key={a.id}>
                     <td>
                       <strong>{a.name}</strong>
-                      <small className="block muted">{a.category}</small>
-                    </td>
-                    <td>{money(a.invested)}</td>
-                    <td>
-                      {money(a.current)}
-                      <small
-                        className={`block ${a.current >= a.invested ? "positive" : "negative"}`}
-                      >
-                        {percent((a.current / a.invested - 1) * 100)}
+                      {a.code && <span className="asset-code">{a.code}</span>}
+                      <small className="block muted">
+                        {a.institution || "Instituição não informada"}
                       </small>
+                    </td>
+                    <td>
+                      <span className="tag">{a.category}</span>
+                    </td>
+                    <td>
+                      {p.quantity === null
+                        ? "Não informada"
+                        : p.quantity.toLocaleString("pt-BR", {
+                            maximumFractionDigits: 6,
+                          })}
+                      <small className="block muted">
+                        {p.averagePrice === null
+                          ? "Preço médio indisponível"
+                          : money(p.averagePrice)}
+                      </small>
+                    </td>
+                    <td>{money(p.basis)}</td>
+                    <td>
+                      <strong>{money(a.current)}</strong>
+                    </td>
+                    <td className={p.unrealized >= 0 ? "positive" : "negative"}>
+                      {money(p.unrealized)}
+                      <small className="block muted">Não realizada</small>
                     </td>
                     <td>
                       <div className="row-actions">
@@ -129,149 +242,207 @@ export default function Investments({
                         >
                           <Pencil size={15} />
                         </button>
-                        <DeleteButton
-                          label={a.name}
-                          onClick={() =>
-                            update({
-                              ...data,
-                              assets: data.assets.filter((x) => x.id !== a.id),
-                            })
-                          }
-                        />
+                        {!hasOperations ? (
+                          <DeleteButton
+                            label={a.name}
+                            onClick={() => remove(a)}
+                          />
+                        ) : (
+                          <span
+                            className="muted"
+                            title="Ativos com operações são preservados. Para encerrar a posição, registre uma venda ou resgate total."
+                          >
+                            Com histórico
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!data.assets.length && (
-            <Empty>Adicione um ativo para começar sua carteira.</Empty>
-          )}
-        </section>
-        <section className="panel">
-          <div className="panel-heading">
-            <h3>Distribuição da carteira</h3>
-          </div>
-          {total > 0 ? (
-            <>
-              <div className="donut">
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={allocation}
-                      dataKey="value"
-                      innerRadius={68}
-                      outerRadius={92}
-                      paddingAngle={4}
-                      stroke="none"
-                    >
-                      {allocation.map((a, i) => (
-                        <Cell
-                          key={a.name}
-                          fill={chartColors[i % chartColors.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v) => money(Number(v))} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="legend">
-                {allocation.map((a, i) => (
-                  <div key={a.name}>
-                    <span>
-                      <i
-                        style={{
-                          background: chartColors[i % chartColors.length],
-                        }}
-                      />
-                      {a.name}
-                    </span>
-                    <strong>{percent((a.value / total) * 100)}</strong>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <Empty>
-              A distribuição aparecerá quando houver valores na carteira.
-            </Empty>
-          )}
-        </section>
-      </div>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!data.assets.length && (
+          <Empty>
+            Adicione um ativo para começar. Você também pode iniciar com posição
+            zero e registrar suas compras.
+          </Empty>
+        )}
+        <div className="table-footer">
+          Valor investido é o custo da posição remanescente: {money(t.basis)}.
+          Ativos com operações são preservados mesmo após uma saída total.
+        </div>
+      </section>
+      <section
+        className="income-breakdown"
+        aria-label="Detalhamento dos resultados"
+      >
+        <div>
+          <span>Variação ainda na carteira</span>
+          <strong>{money(t.unrealized)}</strong>
+          <small>Valor atual menos custo remanescente</small>
+        </div>
+        <div>
+          <span>Resultado em vendas e resgates</span>
+          <strong>{money(t.realized)}</strong>
+          <small>Valor recebido menos custo baixado</small>
+        </div>
+        <div>
+          <span>Dividendos</span>
+          <strong>
+            {money(
+              groupedIncome
+                .filter((o) => o.incomeType === "dividend")
+                .reduce((s, o) => s + o.amount, 0),
+            )}
+          </strong>
+          <small>Recebidos em dinheiro</small>
+        </div>
+        <div>
+          <span>Juros e rendimentos</span>
+          <strong>
+            {money(
+              groupedIncome
+                .filter((o) => o.incomeType !== "dividend")
+                .reduce((s, o) => s + o.amount, 0),
+            )}
+          </strong>
+          <small>Recebidos em dinheiro</small>
+        </div>
+      </section>
+      <OperationHistory data={data} />
+      <details className="calculation-guide">
+        <summary>
+          <Info size={16} />
+          Como os cálculos funcionam
+        </summary>
+        <div>
+          <p>
+            <strong>Sem dupla contagem.</strong> A posição inicial já inclui o
+            capital existente em{" "}
+            {data.assets.length ? "cada data de abertura" : "sua carteira"}.
+            Compra e aporte são duas formas de registrar uma entrada, nunca duas
+            etapas da mesma entrada. Vendas e resgates baixam o custo
+            proporcional pelo preço médio; não são receitas de rentabilidade em
+            sua totalidade.
+          </p>
+          <p>
+            <strong>Preço, retorno e caixa.</strong> A variação de preços soma
+            ganhos/perdas realizados e não realizados. O resultado total
+            adiciona os proventos recebidos, sem somá-los ao patrimônio
+            investido. O retorno simples divide o resultado pelo capital bruto
+            registrado (inclusive reinvestimentos); não é anualizado, não
+            pondera datas e não equivale a TWR ou TIR. O fluxo de caixa inclui
+            somente as operações registradas após a abertura.
+          </p>
+          <p>
+            <strong>Valores líquidos e marcação manual.</strong> Nas compras e
+            aportes, informe o total desembolsado, incluindo custos. Em vendas,
+            resgates e proventos, use o valor líquido recebido, após custos e
+            tributos. O patrimônio é confirmado manualmente: seu crescimento
+            também reflete aportes e resgates. Não há estimativa de cotação. A
+            migração preserva os saldos anteriores como posição inicial;
+            quantidades, instituições e operações desconhecidas não são
+            inventadas.
+          </p>
+          <p>
+            <strong>Histórico preservado.</strong> Operações são registros
+            cumulativos, sem edição ou exclusão nesta versão. Revise antes de
+            salvar. Um registro patrimonial manual anterior não altera posições
+            atuais nem recalcula retornos.
+          </p>
+        </div>
+      </details>
+      <Education onSimulate={() => navigate("simulator")} />
       <p className="footnote">
-        Os valores são informados por você. Não há cotações em tempo real nem
-        recomendações de investimento.
+        Dados de demonstração e valores manuais. Resultados passados e projeções
+        não garantem retornos futuros. Nenhuma recomendação personalizada é
+        fornecida.
       </p>
       {editing !== undefined && (
-        <Modal
-          title={editing ? "Editar ativo" : "Novo ativo"}
+        <AssetForm
+          asset={editing}
+          data={data}
+          onSave={update}
           onClose={() => setEditing(undefined)}
+        />
+      )}
+      {operation && (
+        <OperationForm
+          data={data}
+          incomeOnly={operation === "income"}
+          onSave={update}
+          onClose={() => setOperation(null)}
+        />
+      )}
+      {snapshot && (
+        <Modal
+          title="Registrar patrimônio histórico"
+          onClose={() => setSnapshot(false)}
         >
-          <form onSubmit={save}>
-            <Field label="Nome do ativo">
+          <form onSubmit={saveSnapshot}>
+            <p className="form-help">
+              Informe o patrimônio total que você efetivamente apurou nesta
+              data, sem proventos mantidos fora da carteira. Este registro
+              alimenta o gráfico e não altera os ativos ou a rentabilidade. Um
+              único fechamento é mantido por dia.
+            </p>
+            <Field label="Data do registro">
               <input
-                name="name"
+                name="date"
+                type="date"
                 required
-                maxLength={100}
-                defaultValue={editing?.name}
-                placeholder="Ex.: CDB liquidez diária"
+                max={today()}
+                defaultValue={today()}
               />
             </Field>
-            <Field label="Classe do ativo">
-              <select
-                name="category"
-                defaultValue={editing?.category ?? "Renda fixa"}
-              >
-                {[
-                  "Renda fixa",
-                  "Renda variável",
-                  "Fundos imobiliários",
-                  "Fundos de investimento",
-                  "Outros",
-                ].map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
+            <Field label="Patrimônio total registrado (R$)">
+              <input
+                name="value"
+                type="number"
+                required
+                min="0"
+                max="1000000000000"
+                step="0.01"
+              />
             </Field>
-            <div className="form-grid">
-              <Field label="Total investido (R$)">
-                <input
-                  required
-                  name="invested"
-                  type="number"
-                  min="0.01"
-                  max="1000000000000"
-                  step="0.01"
-                  defaultValue={editing?.invested}
-                />
-              </Field>
-              <Field label="Valor atual (R$)">
-                <input
-                  required
-                  name="current"
-                  type="number"
-                  min="0"
-                  max="1000000000000"
-                  step="0.01"
-                  defaultValue={editing?.current}
-                />
-              </Field>
-            </div>
+            <Field label="Origem ou observação (opcional)">
+              <input
+                name="note"
+                maxLength={180}
+                placeholder="Ex.: Extrato da carteira"
+              />
+            </Field>
+            {error && (
+              <p role="alert" className="form-error">
+                {error}
+              </p>
+            )}
+            <p className="form-help">
+              Último registro:{" "}
+              {data.snapshots.length
+                ? dateLabel(
+                    [...data.snapshots]
+                      .sort((a, b) => a.date.localeCompare(b.date))
+                      .at(-1)!.date,
+                  )
+                : "nenhum"}
+              .
+            </p>
             <div className="modal-actions">
               <button
                 type="button"
                 className="secondary"
-                onClick={() => setEditing(undefined)}
+                onClick={() => setSnapshot(false)}
               >
                 Cancelar
               </button>
-              <button className="primary">Salvar ativo</button>
+              <button className="primary">Salvar registro</button>
             </div>
           </form>
         </Modal>
       )}
-    </>
+    </div>
   );
 }

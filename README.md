@@ -4,7 +4,7 @@ Aplicativo web de organização financeira pessoal, em português do Brasil. Rea
 
 ## Executar
 
-Requisitos: Node.js 22.12+ (validado com Node.js 24) e npm.
+Requisitos: Node.js 22.12+ e npm (validado com Node.js 24).
 
 ```bash
 npm install
@@ -18,25 +18,74 @@ npm run build
 npm run preview
 ```
 
-Se o cache padrão do npm não for gravável, use `npm install --cache /tmp/eleva-npm-cache`.
+Se o cache padrão não for gravável, acrescente `--cache /tmp/eleva-npm-cache` ao comando de instalação.
 
-## Funcionalidades
+## Áreas do aplicativo
 
-- **Dashboard:** filtro mensal, receitas, despesas, saldo, patrimônio investido, evolução dos últimos seis meses, categorias de despesas e lançamentos recentes.
+- **Dashboard:** receitas, despesas, saldo mensal, patrimônio investido, filtro por mês, gráficos e últimos lançamentos.
 - **Receitas e Despesas:** criação, edição e exclusão com confirmação; categorias, pesquisa e filtros por tipo e mês.
-- **Investimentos:** cadastro, edição e exclusão de ativos; capital investido, valor atual, variação e distribuição por classe. Valores inseridos manualmente.
-- **Metas Financeiras:** nome, valor-alvo, acumulado e prazo; atualização, exclusão e progresso limitado visualmente a 100%.
-- **Simulador Patrimonial:** valor inicial, aporte mensal, retorno anual efetivo hipotético e prazo. Juros compostos com aportes no final de cada mês, incluindo taxas zero e negativas. Não considera impostos, inflação ou custos e não garante retornos.
+- **Investimentos v2:** painel consolidado, posição e custo médio dos ativos, operações, proventos, alocação, histórico patrimonial manual, conceitos educativos e acesso ao simulador.
+- **Metas Financeiras:** nome, valor-alvo, acumulado, prazo e progresso.
+- **Simulador Patrimonial:** juros compostos com aporte ao fim do mês; taxa anual efetiva convertida em mensal. Resultados hipotéticos, sem impostos, taxas ou inflação, e sem garantia de retorno.
 
-As cinco páginas usam navegação por hash, com suporte ao histórico do navegador. No celular, a navegação fica em um menu lateral.
+As cinco páginas usam navegação por hash com histórico do navegador. No celular, a navegação fica em um menu lateral. Metas são controles independentes e não movimentam saldo ou patrimônio. As operações de investimento não criam lançamentos em Receitas e Despesas automaticamente.
 
-## Dados e privacidade
+## Investimentos v2
 
-Os dados iniciais são fictícios; os lançamentos de exemplo abrangem o mês atual e os cinco anteriores. As alterações são salvas no `localStorage`, na chave `eleva-financas-v1`, e persistem ao recarregar. Não há servidor, autenticação, integração bancária, pagamentos, chaves de API ou recomendação personalizada. Limpar os dados do navegador remove os registros. Para restaurar a demonstração, remova essa chave nas ferramentas de desenvolvimento e recarregue.
+### Ativos e posição inicial
 
-Metas são controles independentes: seus valores não movimentam lançamentos e não são somados ao patrimônio. O patrimônio exibido é a soma dos valores atuais dos ativos; o saldo representa receitas menos despesas do período. A variação da carteira é a diferença simples entre valor atual e capital investido, sem anualização.
+Cadastre nome, código opcional, classe, instituição, quantidade, preço médio e valor atual total. O valor investido inicial é calculado por **quantidade × preço médio**. Para começar do zero e registrar suas compras, informe quantidade, preço médio e valor atual iguais a zero.
 
-Caso o armazenamento esteja indisponível ou cheio, um aviso informa que novas alterações ficam apenas em memória. Esta versão não oferece backup ou sincronização entre dispositivos. Não utilize para guardar informações sensíveis. As fontes possuem alternativas locais caso o carregamento externo não esteja disponível.
+Se já possui uma posição, cadastre o saldo na data de abertura. Compras anteriores à abertura já estão representadas nesse saldo: registrá-las novamente duplicaria o capital. Quantidade e custo inicial podem ser corrigidos antes da primeira compra, venda, aporte ou resgate. Depois disso, esses campos ficam preservados, enquanto nome, código, classe, instituição e valor atual continuam editáveis.
+
+O valor atual é sempre confirmado manualmente, sem cotação ou atualização automática. Compras, vendas, aportes e resgates exigem a confirmação do valor total do ativo após a operação, apurado hoje. O valor da operação não é somado novamente a essa posição.
+
+### Operações e cálculos
+
+- **Compra ou aporte:** entrada de quantidade e custo; escolha uma única modalidade para cada entrada. Informe o total pago, incluindo custos.
+- **Venda ou resgate:** saída de quantidade e baixa do custo médio proporcional. Informe o líquido recebido, após custos e tributos. A saída total zera quantidade e custo, mantendo o histórico.
+- **Proventos:** dividendos, juros ou rendimentos recebidos em dinheiro. Aumentam o resultado e o fluxo de caixa, sem alterar a quantidade, o custo ou o valor atual do ativo. Um reinvestimento exige uma compra ou aporte separado.
+
+Operações devem ser registradas em ordem de data por ativo, a partir da posição inicial, até hoje. Quantidades superiores à posição são bloqueadas. Para renda fixa, escolha uma unidade consistente (por exemplo, cotas). O histórico é cumulativo, sem edição ou exclusão nesta versão; revise antes de salvar. Ativos com operações não podem ser excluídos. Encerre a posição por uma venda ou resgate total.
+
+| Indicador                            | Definição                                                                          |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| Patrimônio investido                 | Soma dos valores atuais manuais dos ativos                                         |
+| Total aportado bruto                 | Custo inicial + compras e aportes, inclusive reinvestimentos, sem descontar saídas |
+| Valor investido / custo remanescente | Custo inicial + entradas − custo proporcional baixado em saídas                    |
+| Preço médio atual                    | Custo remanescente ÷ quantidade atual; indisponível se desconhecida ou zerada      |
+| Variação não realizada               | Valor atual − custo remanescente                                                   |
+| Resultado realizado                  | Recebimentos de vendas/resgates − custo baixado                                    |
+| Variação acumulada de preços         | Variação não realizada + resultado realizado                                       |
+| Resultado total                      | Variação acumulada + proventos recebidos                                           |
+| Retorno simples acumulado            | Resultado total ÷ total aportado bruto; sem percentual quando não há base          |
+| Fluxo de caixa registrado            | Vendas + resgates + proventos − compras − aportes; exclui a posição inicial        |
+
+O retorno simples não é anualizado e não pondera datas: **não é TWR nem TIR**. Crescimento do patrimônio também pode ser causado por aportes; não representa, por si só, rentabilidade. A posição inicial é o limite de cobertura do histórico: resultados anteriores não são reconstruídos.
+
+Exemplo validado em teste: posição inicial de R$ 1.000, compra de R$ 500, venda de R$ 600, dividendo de R$ 100 e reinvestimento de R$ 100, terminando com R$ 1.200 em ativos. O total aportado bruto é R$ 1.600 e o resultado total é R$ 300 (R$ 200 em variação e R$ 100 de proventos), sem duplicar o dividendo.
+
+### Gráficos e educação
+
+A alocação usa o valor atual dos ativos por classe. A evolução usa exclusivamente registros patrimoniais guardados: a posição na migração, confirmações de valor atual e registros históricos manuais. Há um fechamento por dia; uma nova confirmação no mesmo dia substitui o fechamento anterior. O formulário de registro histórico pede confirmação antes de substituir uma data existente.
+
+Um registro histórico manual apenas alimenta o gráfico: não altera os ativos atuais nem o retorno. As linhas conectam observações e não representam cotações intermediárias. A migração não cria preços, operações ou meses passados. Um único ponto é mostrado até haver outra data registrada.
+
+O espaço educativo explica renda fixa, Tesouro Direto, ações, FIIs e ETFs e seus riscos gerais. O botão **Abrir simulador** leva à área existente, sem alterar posições ou assumir taxas prometidas.
+
+## Armazenamento e migração segura
+
+Os exemplos são fictícios; não há servidor, autenticação, integração bancária, API financeira, pagamentos, chaves de API ou recomendações personalizadas. Valores permanecem no navegador. Não use esta demonstração para guardar informações sensíveis ou como único registro financeiro.
+
+- A v2 usa a chave `eleva-financas-v2`, com `schemaVersion: 2`.
+- Na primeira abertura, se não existir v2, lê e valida `eleva-financas-v1`, preservando lançamentos, metas, IDs, nomes, classes, custo e valor atual dos ativos.
+- A chave v1 **não é apagada nem modificada**. A v2 validada tem prioridade nas próximas aberturas, sem repetir a migração.
+- Quantidades, instituições e códigos desconhecidos ficam não informados. Complete a quantidade inicial em **Editar ativo** antes de registrar operações de quantidade. O preço médio é calculado a partir do custo preservado.
+- O histórico inicia com o patrimônio observado na data de migração, sem inventar datas de compras ou valorizações anteriores.
+- Dados inválidos não são substituídos silenciosamente por demonstração. A gravação é bloqueada, o original é mantido e o aviso permite exportar uma cópia JSON com os registros brutos para recuperação.
+- Falhas de gravação mantêm as alterações em memória e exibem aviso com exportação de cópia. O formato anterior permanece intacto se a migração não puder ser salva.
+
+Não há sincronização ou restauração de backup pela interface nesta versão. Para recuperação, guarde o JSON exportado antes de corrigir dados via ferramentas de desenvolvimento. Para restaurar a demonstração, remova **as duas chaves** no armazenamento local e recarregue; isso apaga suas alterações. Não limpe as chaves durante uma migração normal.
 
 ## Testar
 
@@ -45,32 +94,41 @@ npm test
 npm run build
 ```
 
-Os quatro testes automatizados validam o cálculo patrimonial: juros zero, equivalência da taxa anual, momento dos aportes e retorno negativo. O build executa a verificação estrita de tipos e gera `dist/`.
+Os testes unitários cobrem projeções, preço médio, compras, vendas, aportes, resgates, liquidação fracionária, proventos, reinvestimento sem dupla contagem, perdas, posição zero, datas, migração, integridade e falhas de armazenamento. O build verifica os tipos com TypeScript estrito e gera `dist/`.
 
-Roteiro de validação no navegador:
+Testes de interface reproduzíveis com Playwright:
 
-1. Navegue pelas cinco telas e use voltar/avançar.
-2. Crie uma receita e uma despesa, filtre pelo mês, edite e exclua com confirmação.
-3. Cadastre e altere os valores de um ativo; confira os totais e a distribuição.
-4. Crie uma meta, atualize o acumulado até o alvo e confira a conclusão.
-5. Recarregue a página e confira a persistência dos registros.
-6. Simule R$ 1.000 iniciais, R$ 100 mensais, 0% ao ano e 2 anos: o resultado deve ser R$ 3.400.
-7. Em uma largura de 390 px, abra o menu, navegue e use os formulários. Tabelas extensas têm rolagem própria.
+```bash
+npx playwright install chromium
+npm run test:e2e -- --workers=2
+```
+
+O runner sobe o Vite na porta 5174 e executa cenários em desktop (1440 px) e celular (390 px), em contextos isolados com dados fictícios. Se já houver Chromium instalado no ambiente Linux, pode usá-lo assim:
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=2
+```
+
+Cobertura de interface: migração e persistência, Dashboard e metas preservados, novo lançamento, cadastro/edição de ativo, bloqueio de venda excessiva, operações e reinvestimento, filtro de proventos, histórico manual, educação, simulador, menu móvel, ausência de transbordamento horizontal e exportação de dados corrompidos. Capturas de desktop e celular ficam em `test-results/`, diretório ignorado pelo Git.
 
 ## Estrutura
 
 ```text
 src/
-  components/ui.tsx       # Componentes compartilhados, modal e estados vazios
-  hooks/useFinances.ts    # Estado, validação e persistência local
-  lib/demo.ts            # Dados fictícios
-  lib/format.ts          # Moeda, porcentagens e datas
-  lib/projection.mjs     # Cálculo puro de projeção
-  pages/                 # As cinco áreas do aplicativo
-  types.ts               # Modelos de domínio
-  App.tsx                # Estrutura e navegação
-  styles.css             # Identidade visual e responsividade
- tests/                  # Testes do simulador, sem dependências adicionais
+  components/ui.tsx              # Componentes compartilhados
+  components/investments/        # Formulários, gráficos, histórico e educação
+  hooks/useFinances.ts           # Estado, gravação e aviso/exportação de backup
+  lib/demo.ts                   # Dados fictícios originais
+  lib/format.ts                 # Moeda, porcentagens e datas
+  lib/investments.mjs            # Contabilidade, validação e migração puras
+  lib/storage.mjs                # Leitura segura e persistência versionada
+  lib/projection.mjs             # Cálculo de projeção patrimonial
+  pages/                        # As cinco áreas do aplicativo
+  types.ts                      # Modelos de domínio
+  App.tsx                       # Estrutura e navegação
+  styles.css                    # Identidade visual e responsividade
+ tests/                         # Testes unitários com node:test
+ e2e/                           # Cenários de interface com Playwright
 ```
 
-A separação de estado, modelos e telas permite substituir o armazenamento local por um serviço no futuro. A versão atual não requer variáveis de ambiente.
+Os módulos de cálculo em JavaScript têm declarações TypeScript (`.d.mts`) para consumo tipado pela interface e execução direta no `node:test`. A separação entre estado, modelos, cálculos e telas permite substituir o armazenamento por um serviço no futuro. Esta versão não requer variáveis de ambiente; a variável opcional dos testes apenas seleciona o executável local do navegador.

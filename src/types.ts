@@ -6,7 +6,7 @@ export type Transaction = {
   category: string;
   date: string;
 };
-export type Asset = {
+export type LegacyAsset = {
   id: string;
   name: string;
   category: string;
@@ -20,9 +20,9 @@ export type Goal = {
   saved: number;
   deadline: string;
 };
-export type FinanceData = {
+export type LegacyFinanceData = {
   transactions: Transaction[];
-  assets: Asset[];
+  assets: LegacyAsset[];
   goals: Goal[];
 };
 export type Page =
@@ -31,3 +31,42 @@ export type Page =
   | "investments"
   | "goals"
   | "simulator";
+
+export type Asset = LegacyAsset & {
+  code: string;
+  institution: string;
+  openingDate: string;
+  openingInvested: number;
+  openingQuantity: number | null;
+};
+export type OperationType =
+  | "buy"
+  | "sell"
+  | "contribution"
+  | "redemption"
+  | "income";
+export type IncomeType = "dividend" | "interest" | "yield";
+export type InvestmentOperation = {
+  id: string;
+  assetId: string;
+  type: OperationType;
+  incomeType: IncomeType | null;
+  date: string;
+  amount: number;
+  quantity: number | null;
+  currentAfter: number | null;
+  note: string;
+};
+export type PortfolioSnapshot = {
+  id: string;
+  date: string;
+  value: number;
+  source: "manual" | "recorded";
+  note: string;
+};
+export type FinanceData = Omit<LegacyFinanceData, "assets"> & {
+  schemaVersion: 2;
+  assets: Asset[];
+  operations: InvestmentOperation[];
+  snapshots: PortfolioSnapshot[];
+};
