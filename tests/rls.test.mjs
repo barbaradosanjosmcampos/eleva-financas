@@ -61,6 +61,15 @@ test("migration SQL: isolamento, permissões, referências, CAS e importação a
         "utf8",
       ),
     );
+    await db.exec(
+      await readFile(
+        new URL(
+          "../supabase/migrations/202611080002_investment_remuneration.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     const asUser = async (id) => {
       await db.exec("reset role; set role authenticated;");
       await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
@@ -310,6 +319,42 @@ test("migration SQL: isolamento, permissões, referências, CAS e importação a
             .rows[0].n,
           1,
         );
+      },
+    );
+    await t.test(
+      "remuneração opcional sobrevive ao RPC; taxas inválidas revertem a gravação sem afetar dados antigos",
+      async () => {
+        await asUser(B);
+        for (const remuneration of [
+          { version: 1, mode: "cdi", rate: 110 },
+          { version: 1, mode: "fixed", rate: 12 },
+          { version: 1, mode: "ipca", rate: 6 },
+          { version: 1, mode: "other", description: "Outra regra do contrato" },
+        ]) {
+          const previous = await load();
+          const wallet = structuredClone(previous.wallet);
+          wallet.assets[0].remuneration = remuneration;
+          wallet.assets[0].applicationDate = "2025-12-01";
+          wallet.assets[0].valuationDate = "2026-01-01";
+          await save(wallet, previous.revision);
+          assert.deepEqual((await load()).wallet, wallet);
+        }
+        const previous = await load();
+        for (const remuneration of [
+          null,
+          { version: 2, mode: "cdi", rate: 100 },
+          { version: 1, mode: "fixed", rate: -1 },
+          { version: 1, mode: "ipca", rate: "6" },
+          { version: 1, mode: "other", description: "" },
+        ]) {
+          const wallet = structuredClone(previous.wallet);
+          wallet.assets[0].remuneration = remuneration;
+          await assert.rejects(
+            save(wallet, previous.revision),
+            (e) => e.code === "23514",
+          );
+          assert.deepEqual(await load(), previous);
+        }
       },
     );
     await t.test(

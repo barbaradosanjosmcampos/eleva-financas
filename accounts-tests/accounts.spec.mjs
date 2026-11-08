@@ -378,24 +378,51 @@ test("trocar de conta desmonta carteira anterior e carrega somente a nova sessã
   );
 });
 
-test("investimento com perda só chama a persistência na nuvem após confirmação e mantém revisão", async ({ page }) => {
+test("investimento com perda só chama a persistência na nuvem após confirmação e mantém revisão", async ({
+  page,
+}) => {
   const calls = await mock(page);
   await account(page);
   await login(page);
-  await expect(page.getByRole("region", { name: "Carteira sincronizada", exact: true })).toBeVisible();
-  const localBefore = await page.evaluate(() => localStorage.getItem("eleva-experiencia-v1"));
+  await expect(
+    page.getByRole("region", { name: "Carteira sincronizada", exact: true }),
+  ).toBeVisible();
+  const localBefore = await page.evaluate(() =>
+    localStorage.getItem("eleva-experiencia-v1"),
+  );
   const menu = page.getByRole("button", { name: "Abrir navegação" });
   if (await menu.isVisible()) await menu.click();
   await page.getByRole("link", { name: "Investimentos", exact: true }).click();
-  await page.getByRole("button", { name: "Novo investimento", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Novo investimento", exact: true })
+    .click();
   await page.getByRole("button", { name: /Modo rápido/ }).click();
-  await page.getByLabel("Tipo de investimento", { exact: true }).selectOption("fixed-income");
-  await page.getByLabel("Nome do investimento", { exact: true }).fill("CDB da conta");
-  await page.getByLabel("Onde está seu investimento?", { exact: true }).fill("Banco teste");
-  await page.getByLabel("Valor aplicado inicial (R$)", { exact: true }).fill("1000");
-  await expect(page.getByLabel("Saldo atualizado (R$)", { exact: true })).toHaveValue("1000");
+  await page
+    .getByLabel("Tipo de investimento", { exact: true })
+    .selectOption("fixed-income");
+  await page
+    .getByLabel("Nome do investimento", { exact: true })
+    .fill("CDB da conta");
+  await page
+    .getByLabel("Onde está seu investimento?", { exact: true })
+    .fill("Banco teste");
+  await page
+    .getByLabel("Valor aplicado inicial (R$)", { exact: true })
+    .fill("1000");
+  await expect(
+    page.getByLabel("Saldo atualizado (R$)", { exact: true }),
+  ).toHaveValue("1000");
+  await page
+    .getByLabel("Modalidade de remuneração", { exact: true })
+    .selectOption("cdi");
+  await page
+    .getByLabel("Percentual contratado do CDI (%)", { exact: true })
+    .fill("110");
   await page.getByLabel("Saldo atualizado (R$)", { exact: true }).fill("800");
-  const save = () => page.getByRole("button", { name: "Salvar investimento", exact: true }).click();
+  const save = () =>
+    page
+      .getByRole("button", { name: "Salvar investimento", exact: true })
+      .click();
   page.once("dialog", (d) => d.dismiss());
   await save();
   expect(calls.filter((c) => c.path.includes("save_wallet"))).toHaveLength(0);
@@ -405,9 +432,28 @@ test("investimento com perda só chama a persistência na nuvem após confirmaç
   let writes = calls.filter((c) => c.path.includes("save_wallet"));
   expect(writes).toHaveLength(1);
   expect(writes[0].body.expected_revision).toBe(0);
-  expect(writes[0].body.wallet.assets[0]).toMatchObject({ current: 800, openingInvested: 1000 });
+  expect(writes[0].body.wallet.assets[0].remuneration).toEqual({
+    version: 1,
+    mode: "cdi",
+    rate: 110,
+  });
+  expect(writes[0].body.wallet.assets[0]).toMatchObject({
+    current: 800,
+    openingInvested: 1000,
+  });
   await page.getByRole("button", { name: "Editar CDB da conta" }).click();
-  await expect(page.getByLabel("Saldo atualizado (R$)", { exact: true })).toHaveValue("800");
+  await expect(
+    page.getByLabel("Saldo atualizado (R$)", { exact: true }),
+  ).toHaveValue("800");
+  await expect(
+    page.getByLabel("Modalidade de remuneração", { exact: true }),
+  ).toHaveValue("cdi");
+  await page
+    .getByLabel("Modalidade de remuneração", { exact: true })
+    .selectOption("ipca");
+  await page
+    .getByLabel("Taxa contratada acima do IPCA (% ao ano)", { exact: true })
+    .fill("6");
   await page.getByLabel("Saldo atualizado (R$)", { exact: true }).fill("0");
   const confirmation = page.waitForEvent("dialog");
   const saving = save();
@@ -420,6 +466,26 @@ test("investimento com perda só chama a persistência na nuvem após confirmaç
   expect(writes).toHaveLength(2);
   expect(writes[1].body.expected_revision).toBe(1);
   expect(writes[1].body.wallet.assets[0].current).toBe(0);
+  expect(writes[1].body.wallet.assets[0].remuneration).toEqual({
+    version: 1,
+    mode: "ipca",
+    rate: 6,
+  });
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Carteira sincronizada", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Editar CDB da conta" }).click();
+  await expect(
+    page.getByLabel("Modalidade de remuneração", { exact: true }),
+  ).toHaveValue("ipca");
+  await expect(
+    page.getByLabel("Taxa contratada acima do IPCA (% ao ano)", {
+      exact: true,
+    }),
+  ).toHaveValue("6");
   expect(writes[1].body.wallet.operations).toEqual([]);
-  expect(await page.evaluate(() => localStorage.getItem("eleva-experiencia-v1"))).toBe(localBefore);
+  expect(
+    await page.evaluate(() => localStorage.getItem("eleva-experiencia-v1")),
+  ).toBe(localBefore);
 });

@@ -3303,3 +3303,41 @@ dialog { max-width: calc(100vw - 24px); }
 .migration-panel input[type=checkbox] { width: auto; margin-right: 8px; }
 fieldset:disabled { opacity: .7; }
 .migration-preview { max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
+
+/* Optional contract information and explicitly hypothetical scenarios. */
+.contract-fields { min-width: 0; margin: 1rem 0; padding: 1rem; border: 1px solid var(--border, #dce5df); border-radius: 14px; }
+.contract-fields legend { padding: 0 .4rem; font-weight: 600; }
+.intelligent-investments { padding: 1.25rem; margin: 1.25rem 0; }
+.intelligent-investments p, .intelligent-investments dd { overflow-wrap: anywhere; }
+.intelligent-investments .panel-heading { padding: 0; flex-wrap: wrap; gap: .75rem; }
+.intelligent-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+.intelligent-metrics dt { font-size: .85rem; color: var(--muted, #576b62); }
+.intelligent-metrics dd { margin: .4rem 0 0; font-weight: 600; }
+.smart-scenario { display: grid; gap: .8rem; padding: .5rem 0; min-width: 0; }
+.scenario-consent { display: flex; align-items: flex-start; gap: .6rem; line-height: 1.6; }
+.scenario-consent input { flex: 0 0 auto; width: 1.2rem; height: 1.2rem; margin-top: .3rem; }
+@media (max-width: 650px) { .intelligent-metrics { grid-template-columns: 1fr; } .intelligent-investments { padding: 1rem; } }
+.intelligent-investments .form-help,
+.intelligent-investments .field-explanation,
+.contract-fields .form-help,
+.contract-fields .field-explanation {
+  color: #435c4f;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.intelligent-investments .calculation-guide,
+.intelligent-investments .teaching-label label,
+.intelligent-investments .intelligent-metrics dt,
+.contract-fields .teaching-label label {
+  color: #435c4f;
+  font-size: 14px;
+}
+.intelligent-investments .smart-scenario { padding: 0 1rem 1rem; }
+.intelligent-investments .field-help-button,
+.contract-fields .field-help-button { min-width: 44px; min-height: 44px; color: #806a37; }
+.intelligent-investments :focus-visible,
+.contract-fields :focus-visible { outline: 3px solid #174b3b; outline-offset: 3px; }
+@media (max-width: 650px) {
+  .intelligent-investments input, .intelligent-investments select,
+  .contract-fields input, .contract-fields select { font-size: 16px; }
+}

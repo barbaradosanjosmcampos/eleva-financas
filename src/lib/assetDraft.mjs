@@ -4,6 +4,7 @@ import {
   canTrackByValue,
 } from "./investmentCatalog.mjs";
 import { trackingMode, validDate, validateV2 } from "./investments.mjs";
+import { prepareRemuneration } from "./investmentRates.mjs";
 const normalize = (value) =>
   value.trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
 function number(value, label, optional = false, currency = false) {
@@ -20,6 +21,11 @@ function number(value, label, optional = false, currency = false) {
 }
 export function createAssetDraft(asset, id) {
   return {
+    remunerationMode: asset?.remuneration?.mode ?? "",
+    contractedRate: asset?.remuneration?.rate?.toString() ?? "",
+    remunerationDescription: asset?.remuneration?.description ?? "",
+    valuationDate: asset?.valuationDate ?? "",
+    applicationDate: asset?.applicationDate ?? "",
     id: asset?.id ?? id,
     investmentType: asset ? inferInvestmentType(asset) : "",
     trackingMode: asset ? trackingMode(asset) : "value",
@@ -39,6 +45,12 @@ export function prepareAsset(data, draft, existingId, recordedDate) {
     : null;
   if (existingId && !existing) throw new Error("Ativo não encontrado.");
   const kind = investmentCatalog[draft.investmentType];
+  const remuneration = prepareRemuneration(
+    draft.remunerationMode,
+    draft.contractedRate,
+    draft.remunerationDescription,
+    draft.investmentType,
+  );
   if (!kind || !Object.hasOwn(investmentCatalog, draft.investmentType))
     throw new Error("Selecione o tipo de investimento.");
   if (!["units", "value"].includes(draft.trackingMode))
@@ -139,6 +151,34 @@ export function prepareAsset(data, draft, existingId, recordedDate) {
     invested: locked ? existing.invested : cost,
     current,
   };
+  delete asset.remuneration;
+  delete asset.valuationDate;
+  delete asset.applicationDate;
+  if (draft.applicationDate) {
+    if (!validDate(draft.applicationDate) || draft.applicationDate > date)
+      throw Error(
+        "A data de aplicação deve ser válida e não pode ser posterior à posição inicial.",
+      );
+    asset.applicationDate = draft.applicationDate;
+  }
+  if (remuneration) asset.remuneration = remuneration;
+  if (draft.valuationDate) {
+    if (
+      !validDate(draft.valuationDate) ||
+      draft.valuationDate < date ||
+      draft.valuationDate > recordedDate ||
+      data.operations.some(
+        (o) =>
+          o.assetId === asset.id &&
+          o.type !== "income" &&
+          o.date > draft.valuationDate,
+      )
+    )
+      throw Error(
+        "A data do saldo deve ser válida, entre a posição/última operação de capital e hoje.",
+      );
+    asset.valuationDate = draft.valuationDate;
+  }
   if (
     data.assets.some(
       (a) =>

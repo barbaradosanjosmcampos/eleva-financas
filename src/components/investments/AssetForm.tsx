@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Modal } from "../ui";
 import TeachingField from "./TeachingField";
+import ContractFields from "./ContractFields";
+import { supportsRates, contractLabel } from "../../lib/investmentRates.mjs";
 import type {
   Asset,
   FinanceData,
@@ -60,6 +62,7 @@ export default function AssetForm({
   const [draft, setDraft] = useState<AssetDraft>(() => ({
     ...createAssetDraft(asset, crypto.randomUUID()),
     openingDate: asset?.openingDate ?? today(),
+    valuationDate: asset?.valuationDate ?? (asset ? "" : today()),
   }));
   const [mode, setMode] = useState<"guided" | "quick">(
     asset ? "quick" : "guided",
@@ -216,7 +219,8 @@ export default function AssetForm({
           !window.confirm(
             `${warning}\nCapital aplicado remanescente: ${money(basis)}.\nSaldo atual: ${money(prepared.current)}.\nPerda: ${money(loss)} (${percentage}%).\n\nConfirma que deseja salvar este saldo${prepared.current === 0 ? " zero e registrar a perda de 100%" : " com perda"}? Cancelar mantém o formulário sem salvar.`,
           )
-        ) return;
+        )
+          return;
       }
       const next = {
         ...data,
@@ -523,6 +527,10 @@ export default function AssetForm({
                 onChange={(e) => change("openingDate", e.target.value)}
               />,
             )}
+            {(supportsRates(draft.investmentType) ||
+              draft.remunerationMode) && (
+              <ContractFields draft={draft} change={change} guided={guided} />
+            )}
             {locked ? (
               <div className="locked-position">
                 <strong>
@@ -660,6 +668,18 @@ export default function AssetForm({
                 ação.
               </p>
             </div>
+            {field(
+              "Data do saldo atualizado",
+              "Data de referência do saldo no extrato, não a data de vencimento. Em registros antigos sem essa informação, deixe em branco até conferir. É diferente da data de aplicação e da data da posição inicial.",
+              "Consulte seu comprovante de aplicação e o extrato atualizado.",
+              <input
+                type="date"
+                min={draft.openingDate}
+                max={today()}
+                value={draft.valuationDate}
+                onChange={(e) => change("valuationDate", e.target.value)}
+              />,
+            )}
           </section>
         )}
         {guided && step === 3 && review && (
@@ -693,6 +713,16 @@ export default function AssetForm({
               <div>
                 <dt>Capital inicial</dt>
                 <dd>{money(review.openingInvested)}</dd>
+              </div>
+              {review.remuneration && (
+                <div>
+                  <dt>Taxa contratada</dt>
+                  <dd>{contractLabel(review.remuneration)}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Data do saldo</dt>
+                <dd>{review.valuationDate || "Não informada"}</dd>
               </div>
               <div>
                 <dt>

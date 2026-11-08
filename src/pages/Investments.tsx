@@ -24,6 +24,8 @@ import PortfolioCharts from "../components/investments/PortfolioCharts";
 import OperationHistory from "../components/investments/OperationHistory";
 import Education from "../components/investments/Education";
 import FirstInvestmentGuide from "../components/investments/FirstInvestmentGuide";
+import SmartInvestments from "../components/investments/SmartInvestments";
+import { contractLabel } from "../lib/investmentRates.mjs";
 export default function Investments({
   data,
   update,
@@ -341,6 +343,11 @@ export default function Investments({
                         </td>
                         <td>
                           <span className="tag">{a.category}</span>
+                          {a.remuneration && (
+                            <small className="block muted">
+                              Contrato: {contractLabel(a.remuneration)}
+                            </small>
+                          )}
                         </td>
                         <td>
                           {trackingMode(a) === "value"
@@ -449,6 +456,7 @@ export default function Investments({
               <small>Recebidos em dinheiro</small>
             </div>
           </section>
+          <SmartInvestments data={data} />
           <OperationHistory data={data} />
           <details className="calculation-guide">
             <summary>

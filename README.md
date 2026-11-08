@@ -52,6 +52,8 @@ As cinco páginas usam navegação por hash com histórico do navegador. No celu
 
 ## Investimentos · ELEVA Ensina
 
+O **ELEVA Investimentos Inteligentes** acrescenta remuneração contratada opcional, datas de aplicação e saldo, acompanhamento separado do resultado observado e cenários educativos com hipóteses explícitas. CDI e IPCA permanecem manuais, sem cotações em tempo real. Consulte [regras, fórmulas, compatibilidade e validação](docs/INVESTIMENTOS_INTELIGENTES.md).
+
 ### Cadastro guiado e rápido
 
 O assistente **ELEVA Ensina** começa pela escolha do tipo: **CDB / LCI / LCA, Tesouro Direto, ações, ETFs, fundos imobiliários ou outros**.

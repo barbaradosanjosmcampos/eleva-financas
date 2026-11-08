@@ -1,4 +1,5 @@
 // Accounting is independent of UI and prices. All amounts are in BRL.
+import { validRemuneration, supportsRates } from "./investmentRates.mjs";
 export const operationLabels = {
   buy: "Compra",
   sell: "Venda",
@@ -215,7 +216,16 @@ export function appendOperation(data, operation, recordedDate) {
     ...data,
     operations,
     assets: data.assets.map((a) =>
-      a.id === asset.id ? { ...a, invested: p.basis, current } : a,
+      a.id === asset.id
+        ? {
+            ...a,
+            invested: p.basis,
+            current,
+            ...(operation.type === "income"
+              ? {}
+              : { valuationDate: operation.date }),
+          }
+        : a,
     ),
   };
   if (!validateV2(next))
@@ -288,6 +298,21 @@ export function validateV2(data) {
           text(a.institution) &&
           validDate(a.openingDate) &&
           finite(a.openingInvested) &&
+          validRemuneration(a.remuneration) &&
+          (a.applicationDate === undefined ||
+            (validDate(a.applicationDate) &&
+              a.applicationDate <= a.openingDate)) &&
+          (a.remuneration === undefined ||
+            supportsRates(
+              a.investmentType ??
+                {
+                  "Renda fixa": "fixed-income",
+                  "Tesouro Direto": "treasury",
+                  Outros: "other",
+                }[a.category],
+            )) &&
+          (a.valuationDate === undefined ||
+            (validDate(a.valuationDate) && a.valuationDate >= a.openingDate)) &&
           (a.trackingMode === undefined ||
             ["units", "value"].includes(a.trackingMode)) &&
           (a.investmentType === undefined ||
@@ -345,6 +370,11 @@ export function validateV2(data) {
       return false;
     for (const asset of data.assets) {
       const ops = data.operations.filter((o) => o.assetId === asset.id);
+      if (
+        asset.valuationDate &&
+        ops.some((o) => o.type !== "income" && o.date > asset.valuationDate)
+      )
+        return false;
       if (ops.some((o, i) => i > 0 && o.date < ops[i - 1].date)) return false;
       if (asset.openingQuantity === 0 && asset.openingInvested !== 0)
         return false;
