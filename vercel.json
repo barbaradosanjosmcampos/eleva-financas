@@ -15,5 +15,5 @@
       { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
     ] }
   ],
-  "git": { "deploymentEnabled": { "feat/eleva-contas-seguras": false } }
+  "git": { "deploymentEnabled": { "*": false, "feat/eleva-contas-seguras": true } }
 }
