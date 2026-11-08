@@ -31,9 +31,11 @@ export default function Investments({
   mode,
   guideDismissed,
   onGuideDismiss,
+  synced = false,
 }: {
+  synced?: boolean;
   data: FinanceData;
-  update: (d: FinanceData) => boolean;
+  update: (d: FinanceData) => boolean | Promise<boolean>;
   mode: "personal" | "demo";
   guideDismissed: boolean;
   onGuideDismiss: (dismissed: boolean) => void;
@@ -58,8 +60,8 @@ export default function Investments({
     });
     return () => cancelAnimationFrame(frame);
   }, [success]);
-  function saveInvestment(next: FinanceData) {
-    if (!update(next)) return false;
+  async function saveInvestment(next: FinanceData) {
+    if (!(await update(next))) return false;
     const saved = editing
       ? next.assets.find((a) => a.id === editing.id)
       : next.assets.find((a) => !data.assets.some((old) => old.id === a.id));
@@ -86,7 +88,7 @@ export default function Investments({
       }),
     );
   }
-  function saveSnapshot(e: React.FormEvent<HTMLFormElement>) {
+  async function saveSnapshot(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const date = String(f.get("date"));
@@ -102,7 +104,7 @@ export default function Investments({
     )
       return;
     try {
-      update(
+      const saved = await update(
         recordSnapshot(data, {
           id: crypto.randomUUID(),
           date,
@@ -113,6 +115,7 @@ export default function Investments({
             "Patrimônio total informado manualmente",
         }),
       );
+      if (!saved) return;
       setSnapshot(false);
       setError("");
     } catch (e) {
@@ -159,7 +162,7 @@ export default function Investments({
             <p>
               <strong>{success.name}</strong> foi salvo{" "}
               {mode === "demo" ? "na demonstração" : "na sua carteira pessoal"},
-              neste navegador.
+              {synced ? "na nuvem." : "neste navegador."}
             </p>
             <div className="success-actions">
               <button

@@ -19,7 +19,7 @@ export default function OperationForm({
 }: {
   data: FinanceData;
   incomeOnly: boolean;
-  onSave: (d: FinanceData) => boolean;
+  onSave: (d: FinanceData) => boolean | Promise<boolean>;
   onClose: () => void;
 }) {
   const [assetId, setAssetId] = useState(data.assets[0]?.id ?? "");
@@ -43,7 +43,7 @@ export default function OperationForm({
   const labels = byValue
     ? { contribution: "Aporte", redemption: "Resgate", income: "Provento" }
     : operationLabels;
-  function save(e: React.FormEvent<HTMLFormElement>) {
+  async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting.current) return;
     submitting.current = true;
@@ -76,7 +76,7 @@ export default function OperationForm({
         },
         today(),
       );
-      if (!onSave(next)) {
+      if (!(await onSave(next))) {
         submitting.current = false;
         setError(
           "A operação não foi salva. Confira o aviso da página e tente novamente.",

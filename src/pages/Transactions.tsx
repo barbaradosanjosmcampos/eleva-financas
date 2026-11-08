@@ -26,7 +26,7 @@ export default function Transactions({
   update,
 }: {
   data: FinanceData;
-  update: (d: FinanceData) => boolean;
+  update: (d: FinanceData) => boolean | Promise<boolean>;
 }) {
   const [editing, setEditing] = useState<Transaction | null>();
   const [search, setSearch] = useState("");
@@ -42,7 +42,7 @@ export default function Transactions({
           .includes(search.toLowerCase()),
     )
     .sort((a, b) => b.date.localeCompare(a.date));
-  function save(e: React.FormEvent<HTMLFormElement>) {
+  async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const t: Transaction = {
@@ -54,7 +54,7 @@ export default function Transactions({
       date: String(f.get("date")),
     };
     if (!t.description || !Number.isFinite(t.amount) || t.amount <= 0) return;
-    const saved = update({
+    const saved = await update({
       ...data,
       transactions: editing
         ? data.transactions.map((r) => (r.id === t.id ? t : r))

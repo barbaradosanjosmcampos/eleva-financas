@@ -4,6 +4,12 @@ Aplicativo web de organização financeira pessoal, em português do Brasil. Rea
 
 Agora inclui instalação como PWA em navegadores compatíveis, com instruções para Android/iPhone e aviso de nova versão. Consulte [instalação, dados locais, atualizações e testes do PWA](docs/PWA.md). Não há promessa de operação offline completa; exporte um backup JSON antes de instalar ou trocar de navegador.
 
+## Contas individuais com Supabase (etapa inicial)
+
+A carteira sincronizada exige login real e configuração de um projeto Supabase. Cadastro, confirmação de e-mail e recuperação de senha usam o SDK oficial; o espaço local e a demonstração continuam independentes. Nenhum registro local é enviado automaticamente. Consulte [configuração, migrations, RLS, importação opcional e validação em homologação](docs/SUPABASE.md) e [ambiente cloud](docs/CLOUD_SETUP.md).
+
+Esta implementação não certifica prontidão comercial: o projeto Supabase de destino, os fluxos de e-mail e as políticas precisam de testes reais antes de publicar. Não inclui pagamentos ou assinaturas.
+
 ## Executar
 
 Requisitos: Node.js 22.12+ e npm (validado com Node.js 24).
@@ -190,7 +196,7 @@ src/
  e2e/                           # Cenários de interface com Playwright
 ```
 
-Os módulos de cálculo em JavaScript têm declarações TypeScript (`.d.mts`) para consumo tipado pela interface e execução direta no `node:test`. A separação entre estado, modelos, cálculos e telas permite substituir o armazenamento por um serviço no futuro. Esta versão não requer variáveis de ambiente; a variável opcional dos testes apenas seleciona o executável local do navegador.
+Os módulos de cálculo em JavaScript têm declarações TypeScript (`.d.mts`) para consumo tipado pela interface e execução direta no `node:test`. A separação entre estado, modelos, cálculos e telas permite substituir o armazenamento por um serviço no futuro. O espaço local não requer variáveis. A carteira sincronizada usa as duas configurações públicas de `.env.example`; consulte `docs/SUPABASE.md`. A variável opcional do Playwright seleciona o executável local do navegador.
 
 ## ELEVA Independência Financeira
 

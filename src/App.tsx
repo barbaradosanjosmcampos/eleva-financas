@@ -22,6 +22,9 @@ import Independence from "./pages/Independence";
 import Welcome from "./components/experience/Welcome";
 import BackupManager from "./components/experience/BackupManager";
 import PwaControls from "./components/PwaControls";
+import { useAuth } from "./hooks/useAuth";
+import Account from "./components/Account";
+import CloudWorkspace from "./components/CloudWorkspace";
 const navigation = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "transactions", label: "Receitas e Despesas", icon: ArrowLeftRight },
@@ -35,6 +38,13 @@ function currentPage(): Page {
   return navigation.some((n) => n.id === id) ? (id as Page) : "dashboard";
 }
 export default function App() {
+  const auth = useAuth();
+  const [cloud, setCloud] = useState(
+    () =>
+      new URLSearchParams(location.search).has("code") ||
+      location.hash.includes("type=recovery"),
+  );
+  const showCloud = cloud || auth.recovery;
   const [page, setPage] = useState<Page>(currentPage);
   const [menu, setMenu] = useState(false);
   const [journey, setJourney] = useState(false);
@@ -122,7 +132,11 @@ export default function App() {
           </div>
           <div className="local-badge">
             <ShieldCheck size={17} />
-            <span>Seus dados, no seu navegador</span>
+            <span>
+              {showCloud
+                ? "Conta individual · Supabase"
+                : "Seus dados, no seu navegador"}
+            </span>
           </div>
           <span className="version">ELEVA FINANÇAS · VERSÃO 2.0</span>
         </div>
@@ -146,11 +160,13 @@ export default function App() {
               className={`mode-badge ${mode === "demo" ? "is-demo" : "is-personal"}`}
             >
               <i />
-              {mode === "demo"
-                ? "Demonstração · dados fictícios"
-                : mode === "personal"
-                  ? "Minha carteira"
-                  : "Bem-vindo"}
+              {showCloud
+                ? "Carteira sincronizada · acesso individual"
+                : mode === "demo"
+                  ? "Demonstração · dados fictícios"
+                  : mode === "personal"
+                    ? "Minha carteira"
+                    : "Bem-vindo"}
             </span>
             <span className="avatar" title="Espaço local ELEVA">
               EF
@@ -159,149 +175,203 @@ export default function App() {
         </header>
         <main id="main-content">
           <PwaControls />
-          <div className="experience-controls">
-            <div>
-              {mode && (
-                <>
-                  <label htmlFor="data-mode">Seu espaço</label>
-                  <select
-                    id="data-mode"
-                    aria-label="Modo atual"
-                    value={mode}
-                    disabled={storageBlocked}
-                    onChange={(e) =>
-                      switchMode(e.target.value as "personal" | "demo")
-                    }
-                  >
-                    <option value="personal">Minha carteira</option>
-                    <option value="demo">Demonstração</option>
-                  </select>
-                </>
-              )}
-            </div>
-            {mode && (
-              <button
-                className="secondary"
-                onClick={() => setJourney((v) => !v)}
-              >
-                Mudar de caminho
-              </button>
-            )}
-            <BackupManager exportBackup={exportBackup} onRestore={restore} />
-          </div>
-          {mode && (
-            <div className={`mode-notice ${mode}`}>
-              <span className="demo-dot" />
-              {mode === "demo"
-                ? "Você está em uma demonstração com dados fictícios. As alterações aqui não afetam sua carteira pessoal."
-                : "Esta é sua carteira pessoal. Os dados ficam neste navegador e são separados da demonstração."}
-            </div>
-          )}
-          {mode === "personal" && session.legacyImported && (
-            <div className="legacy-notice">
-              Registros anteriores preservados por inteiro. Como não é possível
-              reconhecer exemplos antigos com segurança, nenhum registro foi
-              removido ou separado automaticamente. Revise-os antes de usar os
-              totais.
-            </div>
-          )}
-          {warning && (
-            <div role="alert" className="notice storage-warning">
-              {warning}
-              <button className="secondary" onClick={exportBackup}>
-                Exportar cópia dos dados
-              </button>
-            </div>
-          )}
-          {mode === null ? (
-            <Welcome
-              onChoose={(selected) => {
-                if (switchMode(selected)) {
-                  setJourney(selected === "personal");
-                  navigate(
-                    selected === "personal" ? "investments" : "dashboard",
-                  );
-                }
-              }}
-            />
-          ) : (
-            <fieldset
-              key={mode}
-              className="app-content"
-              disabled={storageBlocked}
+          <div className="account-bar">
+            <button
+              className={!showCloud ? "primary" : "secondary"}
+              onClick={() => setCloud(false)}
             >
-              {journey && (
-                <section
-                  className="panel journey"
-                  aria-label="Escolha seu caminho"
+              Espaço local / demonstração
+            </button>
+            <button
+              className={showCloud ? "primary" : "secondary"}
+              onClick={() => setCloud(true)}
+            >
+              Carteira sincronizada
+            </button>
+            {auth.session && (
+              <>
+                <span>Conta: {auth.session.user.email}</span>
+                <button
+                  className="secondary"
+                  disabled={auth.loggingOut}
+                  onClick={() => void auth.logout()}
                 >
-                  <h2>Por onde você quer começar?</h2>
-                  <p>
-                    Você pode mudar de caminho a qualquer momento, sem perder
-                    seus registros.
-                  </p>
-                  <div className="scenario-grid">
-                    {(
-                      [
-                        ["transactions", "Organizar minhas finanças"],
-                        ["investments", "Acompanhar meus investimentos"],
-                        [
-                          "independence",
-                          "Planejar minha independência financeira",
-                        ],
-                      ] as const
-                    ).map(([id, label]) => (
-                      <button
-                        key={id}
-                        className="secondary"
-                        onClick={() => {
-                          setJourney(false);
-                          navigate(id);
-                        }}
+                  Sair da conta
+                </button>
+              </>
+            )}
+          </div>
+          {auth.session && auth.notice && <p role="alert">{auth.notice}</p>}
+          {showCloud ? (
+            auth.loading ? (
+              <p role="status">Verificando sessão…</p>
+            ) : auth.session && !auth.recovery ? (
+              <CloudWorkspace
+                key={auth.session.user.id}
+                userId={auth.session.user.id}
+                accessToken={auth.session.access_token}
+                personal={session.personal}
+                page={page}
+                navigate={navigate}
+              />
+            ) : (
+              <Account
+                key={auth.recovery ? "recovery" : "account"}
+                recovery={auth.recovery}
+                onRecovered={() => auth.setRecovery(false)}
+                notice={auth.notice}
+              />
+            )
+          ) : (
+            <>
+              <div className="experience-controls">
+                <div>
+                  {mode && (
+                    <>
+                      <label htmlFor="data-mode">Seu espaço</label>
+                      <select
+                        id="data-mode"
+                        aria-label="Modo atual"
+                        value={mode}
+                        disabled={storageBlocked}
+                        onChange={(e) =>
+                          switchMode(e.target.value as "personal" | "demo")
+                        }
                       >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-              {page === "independence" && (
-                <Independence
-                  portfolioValue={data.assets.reduce(
-                    (sum, a) => sum + a.current,
-                    0,
+                        <option value="personal">Minha carteira</option>
+                        <option value="demo">Demonstração</option>
+                      </select>
+                    </>
                   )}
-                  mode={mode}
-                  legacyImported={session.legacyImported}
+                </div>
+                {mode && (
+                  <button
+                    className="secondary"
+                    onClick={() => setJourney((v) => !v)}
+                  >
+                    Mudar de caminho
+                  </button>
+                )}
+                <BackupManager
+                  exportBackup={exportBackup}
+                  onRestore={restore}
                 />
+              </div>
+              {mode && (
+                <div className={`mode-notice ${mode}`}>
+                  <span className="demo-dot" />
+                  {mode === "demo"
+                    ? "Você está em uma demonstração com dados fictícios. As alterações aqui não afetam sua carteira pessoal."
+                    : "Esta é sua carteira pessoal. Os dados ficam neste navegador e são separados da demonstração."}
+                </div>
               )}
-              {page === "dashboard" && (
-                <Dashboard data={data} navigate={navigate} />
-              )}{" "}
-              {page === "transactions" && (
-                <Transactions data={data} update={update} />
-              )}{" "}
-              {page === "investments" && (
-                <Investments
-                  data={data}
-                  update={update}
-                  navigate={navigate}
-                  mode={mode}
-                  guideDismissed={guideDismissed}
-                  onGuideDismiss={dismissGuide}
+              {mode === "personal" && session.legacyImported && (
+                <div className="legacy-notice">
+                  Registros anteriores preservados por inteiro. Como não é
+                  possível reconhecer exemplos antigos com segurança, nenhum
+                  registro foi removido ou separado automaticamente. Revise-os
+                  antes de usar os totais.
+                </div>
+              )}
+              {warning && (
+                <div role="alert" className="notice storage-warning">
+                  {warning}
+                  <button className="secondary" onClick={exportBackup}>
+                    Exportar cópia dos dados
+                  </button>
+                </div>
+              )}
+              {mode === null ? (
+                <Welcome
+                  onChoose={(selected) => {
+                    if (switchMode(selected)) {
+                      setJourney(selected === "personal");
+                      navigate(
+                        selected === "personal" ? "investments" : "dashboard",
+                      );
+                    }
+                  }}
                 />
-              )}{" "}
-              {page === "goals" && <Goals data={data} update={update} />}{" "}
-              {page === "simulator" && (
-                <Simulator
-                  portfolioValue={data.assets.reduce(
-                    (sum, a) => sum + a.current,
-                    0,
+              ) : (
+                <fieldset
+                  key={mode}
+                  className="app-content"
+                  disabled={storageBlocked}
+                >
+                  {journey && (
+                    <section
+                      className="panel journey"
+                      aria-label="Escolha seu caminho"
+                    >
+                      <h2>Por onde você quer começar?</h2>
+                      <p>
+                        Você pode mudar de caminho a qualquer momento, sem
+                        perder seus registros.
+                      </p>
+                      <div className="scenario-grid">
+                        {(
+                          [
+                            ["transactions", "Organizar minhas finanças"],
+                            ["investments", "Acompanhar meus investimentos"],
+                            [
+                              "independence",
+                              "Planejar minha independência financeira",
+                            ],
+                          ] as const
+                        ).map(([id, label]) => (
+                          <button
+                            key={id}
+                            className="secondary"
+                            onClick={() => {
+                              setJourney(false);
+                              navigate(id);
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
                   )}
-                  mode={mode}
-                />
+                  {page === "independence" && (
+                    <Independence
+                      portfolioValue={data.assets.reduce(
+                        (sum, a) => sum + a.current,
+                        0,
+                      )}
+                      mode={mode}
+                      legacyImported={session.legacyImported}
+                    />
+                  )}
+                  {page === "dashboard" && (
+                    <Dashboard data={data} navigate={navigate} />
+                  )}{" "}
+                  {page === "transactions" && (
+                    <Transactions data={data} update={update} />
+                  )}{" "}
+                  {page === "investments" && (
+                    <Investments
+                      data={data}
+                      update={update}
+                      navigate={navigate}
+                      mode={mode}
+                      guideDismissed={guideDismissed}
+                      onGuideDismiss={dismissGuide}
+                    />
+                  )}{" "}
+                  {page === "goals" && <Goals data={data} update={update} />}{" "}
+                  {page === "simulator" && (
+                    <Simulator
+                      portfolioValue={data.assets.reduce(
+                        (sum, a) => sum + a.current,
+                        0,
+                      )}
+                      mode={mode}
+                    />
+                  )}
+                </fieldset>
               )}
-            </fieldset>
+            </>
           )}
           <footer>
             <span>

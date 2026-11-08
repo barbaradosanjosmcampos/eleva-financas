@@ -53,7 +53,7 @@ export default function AssetForm({
 }: {
   asset: Asset | null;
   data: FinanceData;
-  onSave: (d: FinanceData) => boolean;
+  onSave: (d: FinanceData) => boolean | Promise<boolean>;
   onClose: () => void;
   dataMode: "personal" | "demo";
 }) {
@@ -164,7 +164,7 @@ export default function AssetForm({
     setError("");
     setReview(null);
   }
-  function nextOrSave(e: React.FormEvent<HTMLFormElement>) {
+  async function nextOrSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     if (saved || saveLock.current) return;
@@ -205,7 +205,7 @@ export default function AssetForm({
           : "Posição inicial cadastrada no ELEVA Ensina",
       });
       saveLock.current = true;
-      if (!onSave(final)) {
+      if (!(await onSave(final))) {
         saveLock.current = false;
         setError(
           "O investimento não foi salvo. Confira o aviso da página e tente novamente; nenhum registro foi duplicado.",
