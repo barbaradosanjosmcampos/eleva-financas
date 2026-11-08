@@ -1,17 +1,168 @@
-import { useEffect, useState } from 'react';
-import { LayoutDashboard, ArrowLeftRight, ChartNoAxesCombined, Target, Calculator, Menu, X, ChevronRight, ShieldCheck, ArrowUpRight } from 'lucide-react';
-import type { Page } from './types';
-import { useFinances } from './hooks/useFinances';
-import Dashboard from './pages/Dashboard';
-import Transactions from './pages/Transactions';
-import Investments from './pages/Investments';
-import Goals from './pages/Goals';
-import Simulator from './pages/Simulator';
-const navigation = [{id:'dashboard',label:'Dashboard',icon:LayoutDashboard},{id:'transactions',label:'Receitas e Despesas',icon:ArrowLeftRight},{id:'investments',label:'Investimentos',icon:ChartNoAxesCombined},{id:'goals',label:'Metas Financeiras',icon:Target},{id:'simulator',label:'Simulador Patrimonial',icon:Calculator}] as const;
-function currentPage():Page {const id=location.hash.slice(1);return navigation.some(n=>n.id===id)?id as Page:'dashboard';}
-export default function App(){
- const [page,setPage]=useState<Page>(currentPage);const [menu,setMenu]=useState(false);const {data,update,warning}=useFinances();
- useEffect(()=>{const handle=()=>{setPage(currentPage());setMenu(false);};window.addEventListener('hashchange',handle);return ()=>window.removeEventListener('hashchange',handle);},[]);
- const navigate=(p:Page)=>{location.hash=p;setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'});};
- return <div className="app-shell">{menu&&<button className="sidebar-backdrop" aria-label="Fechar menu" onClick={()=>setMenu(false)}/>}<aside className={`sidebar ${menu?'open':''}`}><a className="brand" href="#dashboard" onClick={()=>setMenu(false)}><span className="brand-mark"><ArrowUpRight strokeWidth={2.6}/></span><span>ELEVA<small>F I N A N Ç A S</small></span></a><button className="mobile-close icon-button" onClick={()=>setMenu(false)} aria-label="Fechar navegação"><X/></button><div className="nav-caption">SEU ESPAÇO FINANCEIRO</div><nav aria-label="Navegação principal">{navigation.map(n=><a href={`#${n.id}`} key={n.id} className={page===n.id?'active':''} aria-current={page===n.id?'page':undefined} onClick={()=>setMenu(false)}><n.icon size={19}/><span>{n.label}</span>{page===n.id&&<span className="active-dot"/>}</a>)}</nav><div className="sidebar-bottom"><div className="sidebar-quote"><span>Mais clareza.<br/>Mais possibilidades.</span><p>Eleve a sua relação<br/>com o dinheiro.</p><div className="quote-line"/></div><div className="local-badge"><ShieldCheck size={17}/><span>Seus dados, no seu navegador</span></div><span className="version">ELEVA FINANÇAS · VERSÃO 1.0</span></div></aside><div className="main-shell"><header className="topbar"><div className="breadcrumb"><button className="mobile-toggle icon-button" aria-label="Abrir navegação" onClick={()=>setMenu(true)}><Menu/></button><span>Meu espaço</span><ChevronRight size={14}/><strong>{navigation.find(n=>n.id===page)?.label}</strong></div><div className="topbar-right"><span className="demo-badge"><i/>Modo demonstração</span><span className="avatar" title="Perfil de demonstração">EF</span></div></header><main id="main-content"><div className="demo-notice"><span className="demo-dot"/>Ambiente local com dados fictícios iniciais. Suas alterações ficam apenas neste navegador.</div>{warning&&<div role="alert" className="notice storage-warning">{warning}</div>}{page==='dashboard'&&<Dashboard data={data} navigate={navigate}/>} {page==='transactions'&&<Transactions data={data} update={update}/>} {page==='investments'&&<Investments data={data} update={update}/>} {page==='goals'&&<Goals data={data} update={update}/>} {page==='simulator'&&<Simulator/>}<footer><span>ELEVA <span className="gold">·</span> Finanças com propósito.</span><span>Organize hoje. Construa o amanhã.</span></footer></main></div></div>;
+import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  ChartNoAxesCombined,
+  Target,
+  Calculator,
+  Menu,
+  X,
+  ChevronRight,
+  ShieldCheck,
+  ArrowUpRight,
+} from "lucide-react";
+import type { Page } from "./types";
+import { useFinances } from "./hooks/useFinances";
+import Dashboard from "./pages/Dashboard";
+import Transactions from "./pages/Transactions";
+import Investments from "./pages/Investments";
+import Goals from "./pages/Goals";
+import Simulator from "./pages/Simulator";
+const navigation = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "transactions", label: "Receitas e Despesas", icon: ArrowLeftRight },
+  { id: "investments", label: "Investimentos", icon: ChartNoAxesCombined },
+  { id: "goals", label: "Metas Financeiras", icon: Target },
+  { id: "simulator", label: "Simulador Patrimonial", icon: Calculator },
+] as const;
+function currentPage(): Page {
+  const id = location.hash.slice(1);
+  return navigation.some((n) => n.id === id) ? (id as Page) : "dashboard";
+}
+export default function App() {
+  const [page, setPage] = useState<Page>(currentPage);
+  const [menu, setMenu] = useState(false);
+  const { data, update, warning } = useFinances();
+  useEffect(() => {
+    const handle = () => {
+      setPage(currentPage());
+      setMenu(false);
+    };
+    window.addEventListener("hashchange", handle);
+    return () => window.removeEventListener("hashchange", handle);
+  }, []);
+  const navigate = (p: Page) => {
+    location.hash = p;
+    setPage(p);
+    setMenu(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  return (
+    <div className="app-shell">
+      {menu && (
+        <button
+          className="sidebar-backdrop"
+          aria-label="Fechar menu"
+          onClick={() => setMenu(false)}
+        />
+      )}
+      <aside className={`sidebar ${menu ? "open" : ""}`}>
+        <a className="brand" href="#dashboard" onClick={() => setMenu(false)}>
+          <span className="brand-mark">
+            <ArrowUpRight strokeWidth={2.6} />
+          </span>
+          <span>
+            ELEVA<small>F I N A N Ç A S</small>
+          </span>
+        </a>
+        <button
+          className="mobile-close icon-button"
+          onClick={() => setMenu(false)}
+          aria-label="Fechar navegação"
+        >
+          <X />
+        </button>
+        <div className="nav-caption">SEU ESPAÇO FINANCEIRO</div>
+        <nav aria-label="Navegação principal">
+          {navigation.map((n) => (
+            <a
+              href={`#${n.id}`}
+              key={n.id}
+              className={page === n.id ? "active" : ""}
+              aria-current={page === n.id ? "page" : undefined}
+              onClick={() => setMenu(false)}
+            >
+              <n.icon size={19} />
+              <span>{n.label}</span>
+              {page === n.id && <span className="active-dot" />}
+            </a>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-quote">
+            <span>
+              Mais clareza.
+              <br />
+              Mais possibilidades.
+            </span>
+            <p>
+              Eleve a sua relação
+              <br />
+              com o dinheiro.
+            </p>
+            <div className="quote-line" />
+          </div>
+          <div className="local-badge">
+            <ShieldCheck size={17} />
+            <span>Seus dados, no seu navegador</span>
+          </div>
+          <span className="version">ELEVA FINANÇAS · VERSÃO 1.0</span>
+        </div>
+      </aside>
+      <div className="main-shell">
+        <header className="topbar">
+          <div className="breadcrumb">
+            <button
+              className="mobile-toggle icon-button"
+              aria-label="Abrir navegação"
+              onClick={() => setMenu(true)}
+            >
+              <Menu />
+            </button>
+            <span>Meu espaço</span>
+            <ChevronRight size={14} />
+            <strong>{navigation.find((n) => n.id === page)?.label}</strong>
+          </div>
+          <div className="topbar-right">
+            <span className="demo-badge">
+              <i />
+              Modo demonstração
+            </span>
+            <span className="avatar" title="Perfil de demonstração">
+              EF
+            </span>
+          </div>
+        </header>
+        <main id="main-content">
+          <div className="demo-notice">
+            <span className="demo-dot" />
+            Ambiente local com dados fictícios iniciais. Suas alterações ficam
+            apenas neste navegador.
+          </div>
+          {warning && (
+            <div role="alert" className="notice storage-warning">
+              {warning}
+            </div>
+          )}
+          {page === "dashboard" && (
+            <Dashboard data={data} navigate={navigate} />
+          )}{" "}
+          {page === "transactions" && (
+            <Transactions data={data} update={update} />
+          )}{" "}
+          {page === "investments" && (
+            <Investments data={data} update={update} />
+          )}{" "}
+          {page === "goals" && <Goals data={data} update={update} />}{" "}
+          {page === "simulator" && <Simulator />}
+          <footer>
+            <span>
+              ELEVA <span className="gold">·</span> Finanças com propósito.
+            </span>
+            <span>Organize hoje. Construa o amanhã.</span>
+          </footer>
+        </main>
+      </div>
+    </div>
+  );
 }

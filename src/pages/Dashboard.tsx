@@ -1,14 +1,305 @@
-import { useState } from 'react';
-import { ArrowUpRight, ArrowDownLeft, ArrowRight, Sparkles } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import type { FinanceData, Page } from '../types';
-import { money, monthKey, percent, dateLabel } from '../lib/format';
-import { Stat, Empty, chartColors } from '../components/ui';
-export default function Dashboard({data,navigate}:{data:FinanceData;navigate:(p:Page)=>void}) {
- const [month,setMonth]=useState(monthKey());const monthly=data.transactions.filter(t=>t.date.startsWith(month));
- const income=monthly.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);const expense=monthly.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);const assets=data.assets.reduce((s,a)=>s+a.current,0);
- const history=Array.from({length:6},(_,i)=>{const d=new Date(`${month}-01T12:00:00`);d.setMonth(d.getMonth()-5+i);const key=monthKey(d);const rows=data.transactions.filter(t=>t.date.startsWith(key));return {name:d.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''),Receitas:rows.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0),Despesas:rows.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)}});
- const expenses=Object.entries(monthly.filter(t=>t.type==='expense').reduce<Record<string,number>>((s,t)=>({...s,[t.category]:(s[t.category]??0)+t.amount}),{})).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
- const recent=[...monthly].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
- return <><div className="section-heading"><div><div className="eyebrow">SEU DINHEIRO, COM MAIS CLAREZA</div><h2>Um novo olhar para suas finanças<span className="gold">.</span></h2><p>Acompanhe o presente. Construa o seu próximo capítulo.</p></div><input className="month-picker" type="month" aria-label="Mês do dashboard" value={month} onChange={e=>{if(e.target.value)setMonth(e.target.value);}}/></div><div className="stats"><Stat label="Receitas do mês" value={income} detail="Entradas no período selecionado" kind="income"/><Stat label="Despesas do mês" value={expense} detail="Saídas no período selecionado" kind="expense"/><Stat label="Saldo do mês" value={income-expense} detail={income?`${percent((income-expense)/income*100)} das receitas disponíveis`:'Sem receitas neste período'}/><Stat label="Patrimônio investido" value={assets} detail="Valor atual da sua carteira" kind="assets"/></div><div className="dashboard-charts"><section className="panel"><div className="panel-heading"><div><h3>Seu dinheiro em movimento</h3><p>Receitas e despesas nos últimos 6 meses</p></div><div className="inline-legend"><span><i/>Receitas</span><span><i/>Despesas</span></div></div><div className="chart"><ResponsiveContainer width="100%" height={260}><AreaChart data={history} margin={{top:15,right:12,left:0,bottom:0}}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1f6049" stopOpacity={0.15}/><stop offset="100%" stopColor="#1f6049" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 5" vertical={false} stroke="#e8ede8"/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#87918b',fontSize:12}} dy={10}/><YAxis axisLine={false} tickLine={false} tickFormatter={v=>`${v/1000} mil`} tick={{fill:'#87918b',fontSize:11}} width={48}/><Tooltip formatter={v=>money(Number(v))}/><Area type="monotone" dataKey="Receitas" stroke="#205c47" strokeWidth={2.5} fill="url(#incomeFill)"/><Area type="monotone" dataKey="Despesas" stroke="#bea471" strokeWidth={2.5} fill="transparent"/></AreaChart></ResponsiveContainer></div></section><section className="panel"><div className="panel-heading"><div><h3>Para onde vai seu dinheiro</h3><p>Despesas por categoria no mês</p></div></div>{expenses.length?<><div className="donut"><ResponsiveContainer width="100%" height={190}><PieChart><Pie data={expenses} dataKey="value" innerRadius={59} outerRadius={81} paddingAngle={3} stroke="none">{expenses.map((c,i)=><Cell key={c.name} fill={chartColors[i%chartColors.length]}/>)}</Pie><Tooltip formatter={v=>money(Number(v))}/></PieChart></ResponsiveContainer><div className="donut-label"><small>Total de despesas</small><strong>{money(expense)}</strong></div></div><div className="legend compact">{expenses.map((c,i)=><div key={c.name}><span><i style={{background:chartColors[i%chartColors.length]}}/>{c.name}</span><strong>{percent(c.value/expense*100)}</strong></div>)}</div></>:<Empty>Sem despesas no mês selecionado.</Empty>}</section></div><div className="dashboard-bottom"><section className="panel"><div className="panel-heading"><div><h3>Últimos lançamentos</h3><p>Os movimentos mais recentes do mês</p></div><button className="text-button" onClick={()=>navigate('transactions')}>Ver todos<ArrowRight size={15}/></button></div><div className="recent-list">{recent.map(t=><div className="recent-row" key={t.id}><span className={`movement-icon ${t.type}`}>{t.type==='income'?<ArrowDownLeft size={19}/>:<ArrowUpRight size={19}/>}</span><div><strong>{t.description}</strong><small>{t.category} · {dateLabel(t.date)}</small></div><strong className={t.type==='income'?'positive':''}>{t.type==='income'?'+':'−'} {money(t.amount)}</strong></div>)}{!recent.length&&<Empty>Nenhum lançamento neste mês.</Empty>}</div></section><section className="future-card"><span className="future-icon"><Sparkles size={24}/></span><span className="eyebrow">CADA PASSO IMPORTA</span><h3>Seu futuro começa<br/>com os planos de hoje.</h3><p>Transforme seus objetivos em metas e acompanhe o caminho até lá.</p><button onClick={()=>navigate('goals')}>Explorar minhas metas<ArrowRight size={17}/></button><div className="decor-circle"/></section></div><p className="footnote">Resumo mensal: {money(income)} em receitas e {money(expense)} em despesas. O patrimônio considera somente a carteira; metas e saldo mensal não são somados a ele.</p></>;
+import { useState } from "react";
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import type { FinanceData, Page } from "../types";
+import { money, monthKey, percent, dateLabel } from "../lib/format";
+import { Stat, Empty, chartColors } from "../components/ui";
+export default function Dashboard({
+  data,
+  navigate,
+}: {
+  data: FinanceData;
+  navigate: (p: Page) => void;
+}) {
+  const [month, setMonth] = useState(monthKey());
+  const monthly = data.transactions.filter((t) => t.date.startsWith(month));
+  const income = monthly
+    .filter((t) => t.type === "income")
+    .reduce((s, t) => s + t.amount, 0);
+  const expense = monthly
+    .filter((t) => t.type === "expense")
+    .reduce((s, t) => s + t.amount, 0);
+  const assets = data.assets.reduce((s, a) => s + a.current, 0);
+  const history = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(`${month}-01T12:00:00`);
+    d.setMonth(d.getMonth() - 5 + i);
+    const key = monthKey(d);
+    const rows = data.transactions.filter((t) => t.date.startsWith(key));
+    return {
+      name: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+      Receitas: rows
+        .filter((t) => t.type === "income")
+        .reduce((s, t) => s + t.amount, 0),
+      Despesas: rows
+        .filter((t) => t.type === "expense")
+        .reduce((s, t) => s + t.amount, 0),
+    };
+  });
+  const expenses = Object.entries(
+    monthly
+      .filter((t) => t.type === "expense")
+      .reduce<
+        Record<string, number>
+      >((s, t) => ({ ...s, [t.category]: (s[t.category] ?? 0) + t.amount }), {}),
+  )
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+  const recent = [...monthly]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 4);
+  return (
+    <>
+      <div className="section-heading">
+        <div>
+          <div className="eyebrow">SEU DINHEIRO, COM MAIS CLAREZA</div>
+          <h2>
+            Um novo olhar para suas finanças<span className="gold">.</span>
+          </h2>
+          <p>Acompanhe o presente. Construa o seu próximo capítulo.</p>
+        </div>
+        <input
+          className="month-picker"
+          type="month"
+          aria-label="Mês do dashboard"
+          value={month}
+          onChange={(e) => {
+            if (e.target.value) setMonth(e.target.value);
+          }}
+        />
+      </div>
+      <div className="stats">
+        <Stat
+          label="Receitas do mês"
+          value={income}
+          detail="Entradas no período selecionado"
+          kind="income"
+        />
+        <Stat
+          label="Despesas do mês"
+          value={expense}
+          detail="Saídas no período selecionado"
+          kind="expense"
+        />
+        <Stat
+          label="Saldo do mês"
+          value={income - expense}
+          detail={
+            income
+              ? `${percent(((income - expense) / income) * 100)} das receitas disponíveis`
+              : "Sem receitas neste período"
+          }
+        />
+        <Stat
+          label="Patrimônio investido"
+          value={assets}
+          detail="Valor atual da sua carteira"
+          kind="assets"
+        />
+      </div>
+      <div className="dashboard-charts">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h3>Seu dinheiro em movimento</h3>
+              <p>Receitas e despesas nos últimos 6 meses</p>
+            </div>
+            <div className="inline-legend">
+              <span>
+                <i />
+                Receitas
+              </span>
+              <span>
+                <i />
+                Despesas
+              </span>
+            </div>
+          </div>
+          <div className="chart">
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart
+                data={history}
+                margin={{ top: 15, right: 12, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1f6049" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#1f6049" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 5"
+                  vertical={false}
+                  stroke="#e8ede8"
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#87918b", fontSize: 12 }}
+                  dy={10}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `${v / 1000} mil`}
+                  tick={{ fill: "#87918b", fontSize: 11 }}
+                  width={48}
+                />
+                <Tooltip formatter={(v) => money(Number(v))} />
+                <Area
+                  type="monotone"
+                  dataKey="Receitas"
+                  stroke="#205c47"
+                  strokeWidth={2.5}
+                  fill="url(#incomeFill)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="Despesas"
+                  stroke="#bea471"
+                  strokeWidth={2.5}
+                  fill="transparent"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h3>Para onde vai seu dinheiro</h3>
+              <p>Despesas por categoria no mês</p>
+            </div>
+          </div>
+          {expenses.length ? (
+            <>
+              <div className="donut">
+                <ResponsiveContainer width="100%" height={190}>
+                  <PieChart>
+                    <Pie
+                      data={expenses}
+                      dataKey="value"
+                      innerRadius={59}
+                      outerRadius={81}
+                      paddingAngle={3}
+                      stroke="none"
+                    >
+                      {expenses.map((c, i) => (
+                        <Cell
+                          key={c.name}
+                          fill={chartColors[i % chartColors.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v) => money(Number(v))} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="donut-label">
+                  <small>Total de despesas</small>
+                  <strong>{money(expense)}</strong>
+                </div>
+              </div>
+              <div className="legend compact">
+                {expenses.map((c, i) => (
+                  <div key={c.name}>
+                    <span>
+                      <i
+                        style={{
+                          background: chartColors[i % chartColors.length],
+                        }}
+                      />
+                      {c.name}
+                    </span>
+                    <strong>{percent((c.value / expense) * 100)}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <Empty>Sem despesas no mês selecionado.</Empty>
+          )}
+        </section>
+      </div>
+      <div className="dashboard-bottom">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h3>Últimos lançamentos</h3>
+              <p>Os movimentos mais recentes do mês</p>
+            </div>
+            <button
+              className="text-button"
+              onClick={() => navigate("transactions")}
+            >
+              Ver todos
+              <ArrowRight size={15} />
+            </button>
+          </div>
+          <div className="recent-list">
+            {recent.map((t) => (
+              <div className="recent-row" key={t.id}>
+                <span className={`movement-icon ${t.type}`}>
+                  {t.type === "income" ? (
+                    <ArrowDownLeft size={19} />
+                  ) : (
+                    <ArrowUpRight size={19} />
+                  )}
+                </span>
+                <div>
+                  <strong>{t.description}</strong>
+                  <small>
+                    {t.category} · {dateLabel(t.date)}
+                  </small>
+                </div>
+                <strong className={t.type === "income" ? "positive" : ""}>
+                  {t.type === "income" ? "+" : "−"} {money(t.amount)}
+                </strong>
+              </div>
+            ))}
+            {!recent.length && <Empty>Nenhum lançamento neste mês.</Empty>}
+          </div>
+        </section>
+        <section className="future-card">
+          <span className="future-icon">
+            <Sparkles size={24} />
+          </span>
+          <span className="eyebrow">CADA PASSO IMPORTA</span>
+          <h3>
+            Seu futuro começa
+            <br />
+            com os planos de hoje.
+          </h3>
+          <p>
+            Transforme seus objetivos em metas e acompanhe o caminho até lá.
+          </p>
+          <button onClick={() => navigate("goals")}>
+            Explorar minhas metas
+            <ArrowRight size={17} />
+          </button>
+          <div className="decor-circle" />
+        </section>
+      </div>
+      <p className="footnote">
+        Resumo mensal: {money(income)} em receitas e {money(expense)} em
+        despesas. O patrimônio considera somente a carteira; metas e saldo
+        mensal não são somados a ele.
+      </p>
+    </>
+  );
 }

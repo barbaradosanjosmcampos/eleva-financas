@@ -1,12 +1,277 @@
-import { useState } from 'react';
-import { Plus, Pencil } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import type { FinanceData, Asset } from '../types';
-import { money, percent } from '../lib/format';
-import { Stat, Modal, Field, Empty, DeleteButton, chartColors } from '../components/ui';
-export default function Investments({data,update}:{data:FinanceData;update:(d:FinanceData)=>void}) {
- const [editing,setEditing]=useState<Asset|null>(); const invested=data.assets.reduce((s,a)=>s+a.invested,0);const total=data.assets.reduce((s,a)=>s+a.current,0);
- const allocation=Object.entries(data.assets.reduce<Record<string,number>>((s,a)=>({...s,[a.category]:(s[a.category]??0)+a.current}),{})).map(([name,value])=>({name,value}));
- function save(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const a:Asset={id:editing?.id??crypto.randomUUID(),name:String(f.get('name')).trim(),category:String(f.get('category')),invested:Number(f.get('invested')),current:Number(f.get('current'))};if(!a.name||!Number.isFinite(a.invested)||!Number.isFinite(a.current)||a.invested<=0||a.current<0)return;update({...data,assets:editing?data.assets.map(x=>x.id===a.id?a:x):[...data.assets,a]});setEditing(undefined);}
- return <><div className="section-heading"><div><h2>Seu patrimônio, em perspectiva</h2><p>Uma visão organizada dos ativos que você acompanha.</p></div><button className="primary" onClick={()=>setEditing(null)}><Plus size={18}/>Novo ativo</button></div><div className="stats three"><Stat label="Valor da carteira" value={total} detail="Valores atualizados manualmente" kind="assets"/><Stat label="Total investido" value={invested} detail="Capital informado nos seus ativos"/><Stat label="Variação acumulada" value={total-invested} detail={invested?`${percent((total/invested-1)*100)} sobre o valor investido`:'Adicione seu primeiro ativo'} kind="income"/></div><div className="investment-grid"><section className="panel"><div className="panel-heading"><h3>Meus ativos</h3><span className="muted">{data.assets.length} ativos</span></div><div className="table-scroll"><table><thead><tr><th>Ativo</th><th>Investido</th><th>Valor atual</th><th>Ações</th></tr></thead><tbody>{data.assets.map(a=><tr key={a.id}><td><strong>{a.name}</strong><small className="block muted">{a.category}</small></td><td>{money(a.invested)}</td><td>{money(a.current)}<small className={`block ${a.current>=a.invested?'positive':'negative'}`}>{percent((a.current/a.invested-1)*100)}</small></td><td><div className="row-actions"><button className="icon-button" aria-label={`Editar ${a.name}`} onClick={()=>setEditing(a)}><Pencil size={15}/></button><DeleteButton label={a.name} onClick={()=>update({...data,assets:data.assets.filter(x=>x.id!==a.id)})}/></div></td></tr>)}</tbody></table></div>{!data.assets.length&&<Empty>Adicione um ativo para começar sua carteira.</Empty>}</section><section className="panel"><div className="panel-heading"><h3>Distribuição da carteira</h3></div>{total>0?<><div className="donut"><ResponsiveContainer width="100%" height={220}><PieChart><Pie data={allocation} dataKey="value" innerRadius={68} outerRadius={92} paddingAngle={4} stroke="none">{allocation.map((a,i)=><Cell key={a.name} fill={chartColors[i%chartColors.length]}/>)}</Pie><Tooltip formatter={v=>money(Number(v))}/></PieChart></ResponsiveContainer></div><div className="legend">{allocation.map((a,i)=><div key={a.name}><span><i style={{background:chartColors[i%chartColors.length]}}/>{a.name}</span><strong>{percent(a.value/total*100)}</strong></div>)}</div></>:<Empty>A distribuição aparecerá quando houver valores na carteira.</Empty>}</section></div><p className="footnote">Os valores são informados por você. Não há cotações em tempo real nem recomendações de investimento.</p>{editing!==undefined&&<Modal title={editing?'Editar ativo':'Novo ativo'} onClose={()=>setEditing(undefined)}><form onSubmit={save}><Field label="Nome do ativo"><input name="name" required maxLength={100} defaultValue={editing?.name} placeholder="Ex.: CDB liquidez diária"/></Field><Field label="Classe do ativo"><select name="category" defaultValue={editing?.category??'Renda fixa'}>{['Renda fixa','Renda variável','Fundos imobiliários','Fundos de investimento','Outros'].map(c=><option key={c}>{c}</option>)}</select></Field><div className="form-grid"><Field label="Total investido (R$)"><input required name="invested" type="number" min="0.01" max="1000000000000" step="0.01" defaultValue={editing?.invested}/></Field><Field label="Valor atual (R$)"><input required name="current" type="number" min="0" max="1000000000000" step="0.01" defaultValue={editing?.current}/></Field></div><div className="modal-actions"><button type="button" className="secondary" onClick={()=>setEditing(undefined)}>Cancelar</button><button className="primary">Salvar ativo</button></div></form></Modal>}</>;
+import { useState } from "react";
+import { Plus, Pencil } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import type { FinanceData, Asset } from "../types";
+import { money, percent } from "../lib/format";
+import {
+  Stat,
+  Modal,
+  Field,
+  Empty,
+  DeleteButton,
+  chartColors,
+} from "../components/ui";
+export default function Investments({
+  data,
+  update,
+}: {
+  data: FinanceData;
+  update: (d: FinanceData) => void;
+}) {
+  const [editing, setEditing] = useState<Asset | null>();
+  const invested = data.assets.reduce((s, a) => s + a.invested, 0);
+  const total = data.assets.reduce((s, a) => s + a.current, 0);
+  const allocation = Object.entries(
+    data.assets.reduce<Record<string, number>>(
+      (s, a) => ({ ...s, [a.category]: (s[a.category] ?? 0) + a.current }),
+      {},
+    ),
+  ).map(([name, value]) => ({ name, value }));
+  function save(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const a: Asset = {
+      id: editing?.id ?? crypto.randomUUID(),
+      name: String(f.get("name")).trim(),
+      category: String(f.get("category")),
+      invested: Number(f.get("invested")),
+      current: Number(f.get("current")),
+    };
+    if (
+      !a.name ||
+      !Number.isFinite(a.invested) ||
+      !Number.isFinite(a.current) ||
+      a.invested <= 0 ||
+      a.current < 0
+    )
+      return;
+    update({
+      ...data,
+      assets: editing
+        ? data.assets.map((x) => (x.id === a.id ? a : x))
+        : [...data.assets, a],
+    });
+    setEditing(undefined);
+  }
+  return (
+    <>
+      <div className="section-heading">
+        <div>
+          <h2>Seu patrimônio, em perspectiva</h2>
+          <p>Uma visão organizada dos ativos que você acompanha.</p>
+        </div>
+        <button className="primary" onClick={() => setEditing(null)}>
+          <Plus size={18} />
+          Novo ativo
+        </button>
+      </div>
+      <div className="stats three">
+        <Stat
+          label="Valor da carteira"
+          value={total}
+          detail="Valores atualizados manualmente"
+          kind="assets"
+        />
+        <Stat
+          label="Total investido"
+          value={invested}
+          detail="Capital informado nos seus ativos"
+        />
+        <Stat
+          label="Variação acumulada"
+          value={total - invested}
+          detail={
+            invested
+              ? `${percent((total / invested - 1) * 100)} sobre o valor investido`
+              : "Adicione seu primeiro ativo"
+          }
+          kind="income"
+        />
+      </div>
+      <div className="investment-grid">
+        <section className="panel">
+          <div className="panel-heading">
+            <h3>Meus ativos</h3>
+            <span className="muted">{data.assets.length} ativos</span>
+          </div>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ativo</th>
+                  <th>Investido</th>
+                  <th>Valor atual</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.assets.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <strong>{a.name}</strong>
+                      <small className="block muted">{a.category}</small>
+                    </td>
+                    <td>{money(a.invested)}</td>
+                    <td>
+                      {money(a.current)}
+                      <small
+                        className={`block ${a.current >= a.invested ? "positive" : "negative"}`}
+                      >
+                        {percent((a.current / a.invested - 1) * 100)}
+                      </small>
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          className="icon-button"
+                          aria-label={`Editar ${a.name}`}
+                          onClick={() => setEditing(a)}
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <DeleteButton
+                          label={a.name}
+                          onClick={() =>
+                            update({
+                              ...data,
+                              assets: data.assets.filter((x) => x.id !== a.id),
+                            })
+                          }
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!data.assets.length && (
+            <Empty>Adicione um ativo para começar sua carteira.</Empty>
+          )}
+        </section>
+        <section className="panel">
+          <div className="panel-heading">
+            <h3>Distribuição da carteira</h3>
+          </div>
+          {total > 0 ? (
+            <>
+              <div className="donut">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={allocation}
+                      dataKey="value"
+                      innerRadius={68}
+                      outerRadius={92}
+                      paddingAngle={4}
+                      stroke="none"
+                    >
+                      {allocation.map((a, i) => (
+                        <Cell
+                          key={a.name}
+                          fill={chartColors[i % chartColors.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v) => money(Number(v))} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="legend">
+                {allocation.map((a, i) => (
+                  <div key={a.name}>
+                    <span>
+                      <i
+                        style={{
+                          background: chartColors[i % chartColors.length],
+                        }}
+                      />
+                      {a.name}
+                    </span>
+                    <strong>{percent((a.value / total) * 100)}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <Empty>
+              A distribuição aparecerá quando houver valores na carteira.
+            </Empty>
+          )}
+        </section>
+      </div>
+      <p className="footnote">
+        Os valores são informados por você. Não há cotações em tempo real nem
+        recomendações de investimento.
+      </p>
+      {editing !== undefined && (
+        <Modal
+          title={editing ? "Editar ativo" : "Novo ativo"}
+          onClose={() => setEditing(undefined)}
+        >
+          <form onSubmit={save}>
+            <Field label="Nome do ativo">
+              <input
+                name="name"
+                required
+                maxLength={100}
+                defaultValue={editing?.name}
+                placeholder="Ex.: CDB liquidez diária"
+              />
+            </Field>
+            <Field label="Classe do ativo">
+              <select
+                name="category"
+                defaultValue={editing?.category ?? "Renda fixa"}
+              >
+                {[
+                  "Renda fixa",
+                  "Renda variável",
+                  "Fundos imobiliários",
+                  "Fundos de investimento",
+                  "Outros",
+                ].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </Field>
+            <div className="form-grid">
+              <Field label="Total investido (R$)">
+                <input
+                  required
+                  name="invested"
+                  type="number"
+                  min="0.01"
+                  max="1000000000000"
+                  step="0.01"
+                  defaultValue={editing?.invested}
+                />
+              </Field>
+              <Field label="Valor atual (R$)">
+                <input
+                  required
+                  name="current"
+                  type="number"
+                  min="0"
+                  max="1000000000000"
+                  step="0.01"
+                  defaultValue={editing?.current}
+                />
+              </Field>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setEditing(undefined)}
+              >
+                Cancelar
+              </button>
+              <button className="primary">Salvar ativo</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
+  );
 }
