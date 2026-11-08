@@ -189,3 +189,13 @@ src/
 ```
 
 Os módulos de cálculo em JavaScript têm declarações TypeScript (`.d.mts`) para consumo tipado pela interface e execução direta no `node:test`. A separação entre estado, modelos, cálculos e telas permite substituir o armazenamento por um serviço no futuro. Esta versão não requer variáveis de ambiente; a variável opcional dos testes apenas seleciona o executável local do navegador.
+
+## ELEVA Independência Financeira
+
+A nova área no menu mantém o Simulador Patrimonial e compartilha sua função de juros compostos. Após **Começar do zero**, escolha organizar finanças, acompanhar investimentos ou planejar independência. **Escolher meu caminho** permite voltar à escolha sem apagar registros.
+
+O planejamento oferece três cenários hipotéticos editáveis, com patrimônio inicial, aportes nominais fixos ao fim do mês, prazo de 0 a 100 anos, retorno anual efetivo e inflação. Separa capital e crescimento, e apresenta saldo nominal e poder de compra atual. A meta usa renda mensal de hoje × 12 ÷ taxa anual de retirada. A comparação também usa reais de hoje. A taxa de retirada não é garantida nem universal e o patrimônio pode se esgotar; a fase de retiradas não é simulada. Não inclui custos, tributos ou volatilidade.
+
+O total pessoal só é copiado por escolha explícita e substitui o campo inicial, sem somar novamente. A demonstração não acessa esse total. Registros anteriores devem ser revisados, pois podem conter exemplos históricos. Hipóteses permanecem ao navegar entre áreas e são reiniciadas ao alternar de espaço ou recarregar, sem gravação nos registros financeiros ou backups. Nenhuma migração de esquema foi necessária. As chaves históricas e o mecanismo de backup permanecem intactos.
+
+Os gráficos anuais exibem capital, crescimento hipotético (inclusive perdas), saldo nominal e poder de compra. Explicações expansíveis detalham fórmulas e conceitos. Valores não finitos, taxas inválidas e combinações que excedem a capacidade numérica são bloqueados.

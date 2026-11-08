@@ -3122,3 +3122,41 @@ dialog:has(.asset-assistant) {
 .example-readonly .text-button {
   color: #a18b50;
 }
+.independence-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin: 24px 0;
+}
+.independence-cards .panel,
+.independence-chart {
+  padding: 24px;
+  min-width: 0;
+}
+.independence-cards dd {
+  margin: 4px 0 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.independence-chart {
+  margin-top: 24px;
+}
+.independence-chart details {
+  padding: 14px 0;
+  border-bottom: 1px solid #e8ede8;
+}
+.independence-chart summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.journey-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+}
+@media (max-width: 900px) {
+  .independence-cards {
+    grid-template-columns: 1fr;
+  }
+}

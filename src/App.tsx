@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Investments from "./pages/Investments";
 import Goals from "./pages/Goals";
+import Independence from "./pages/Independence";
 import Simulator from "./pages/Simulator";
 import Welcome from "./components/experience/Welcome";
 import BackupManager from "./components/experience/BackupManager";
@@ -25,6 +26,8 @@ const navigation = [
   { id: "transactions", label: "Receitas e Despesas", icon: ArrowLeftRight },
   { id: "investments", label: "Investimentos", icon: ChartNoAxesCombined },
   { id: "goals", label: "Metas Financeiras", icon: Target },
+  { id: "independence", label: "Independência Financeira", icon: Target },
+  { id: "journey", label: "Escolher meu caminho", icon: ArrowUpRight },
   { id: "simulator", label: "Simulador Patrimonial", icon: Calculator },
 ] as const;
 function currentPage(): Page {
@@ -204,9 +207,7 @@ export default function App() {
             <Welcome
               onChoose={(selected) => {
                 if (switchMode(selected))
-                  navigate(
-                    selected === "personal" ? "investments" : "dashboard",
-                  );
+                  navigate(selected === "personal" ? "journey" : "dashboard");
               }}
             />
           ) : (
@@ -215,6 +216,43 @@ export default function App() {
               className="app-content"
               disabled={storageBlocked}
             >
+              {page === "journey" && (
+                <section className="panel welcome">
+                  <h2>Qual será seu próximo passo?</h2>
+                  <p>
+                    Você pode mudar de caminho pelo menu sem perder seus
+                    registros.
+                  </p>
+                  <div className="journey-choices">
+                    {(
+                      [
+                        ["transactions", "Organizar minhas finanças"],
+                        ["investments", "Acompanhar meus investimentos"],
+                        [
+                          "independence",
+                          "Planejar minha independência financeira",
+                        ],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        className="secondary"
+                        key={id}
+                        onClick={() => navigate(id)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <Independence
+                active={page === "independence"}
+                mode={mode}
+                portfolioValue={data.assets.reduce(
+                  (sum, a) => sum + a.current,
+                  0,
+                )}
+              />
               {page === "dashboard" && (
                 <Dashboard data={data} navigate={navigate} />
               )}{" "}

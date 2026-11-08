@@ -30,6 +30,8 @@ export type Page =
   | "transactions"
   | "investments"
   | "goals"
+  | "independence"
+  | "journey"
   | "simulator";
 
 export type TrackingMode = "units" | "value";
