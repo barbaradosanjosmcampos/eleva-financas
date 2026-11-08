@@ -201,3 +201,9 @@ O total da carteira pessoal só preenche o patrimônio inicial após uma escolha
 Após **Começar do zero**, três caminhos permitem organizar finanças, acompanhar investimentos ou planejar independência. **Mudar de caminho** reabre a escolha, preservando os registros. O menu lateral continua oferecendo todas as áreas.
 
 Os testes de `tests/independence.test.mjs` verificam fórmulas, inflação, deflação, perdas, limites e cenários. Os testes de `e2e/independence.spec.mjs` exercitam a jornada, importação explícita sem duplicidade, migração v1, isolamento dos modos e layout móvel; usam o comando de Playwright documentado acima.
+
+### ELEVA Ensina — Entenda seu patrimônio
+
+Em **Seu objetivo no horizonte**, a conta mostra a renda mensal × 12 e a renda anual ÷ taxa de retirada escolhida. Patrimônio-alvo estimado e patrimônio projetado são comparados em reais de hoje, com atualização ao editar as premissas e aviso sobre riscos de esgotamento. Nenhuma taxa é apresentada como segura ou recomendada.
+
+O componente educativo explica patrimônio acumulado, renda gerada e retiradas, com detalhes expansíveis. Um exemplo fictício editável separa saldo inicial + rendimento total − retirada = saldo final. Distribuições já incluídas no rendimento não são somadas novamente. As hipóteses educativas são temporárias, independentes do plano e não gravam dados na carteira ou nos backups.

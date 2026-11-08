@@ -24,7 +24,10 @@ export function plan(input: PlanInput): {
     growth: number;
     real: number;
   };
+  annualIncome: number;
   target: number;
   gap: number;
   finalAge: number | null;
 };
+
+export function wealthExample(initial: number, returnRate: number, withdrawal: number): { initial: number; earnings: number; withdrawal: number; final: number };

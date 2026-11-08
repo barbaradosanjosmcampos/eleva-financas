@@ -37,12 +37,25 @@ export function plan({
     real: p.balance / Math.pow(1 + inflation / 100, p.year),
   }));
   const last = series.at(-1);
-  const target = (income * 12) / (withdrawal / 100);
+  const annualIncome = income * 12;
+  const target = annualIncome / (withdrawal / 100);
   return {
     series,
     last,
+    annualIncome,
     target,
     gap: last.real - target,
     finalAge: age === null ? null : age + years,
   };
+}
+
+// Total return includes distributions once; withdrawing them is a separate outflow.
+export function wealthExample(initial, returnRate, withdrawal) {
+  range(initial, 0, 1e9, "Patrimônio inicial");
+  range(returnRate, -100, 100, "Rendimento hipotético");
+  range(withdrawal, 0, 1e9, "Retirada");
+  const earnings = initial * returnRate / 100;
+  const available = initial + earnings;
+  if (withdrawal > available) throw new Error("A retirada não pode superar o patrimônio disponível neste exemplo.");
+  return { initial, earnings, withdrawal, final: available - withdrawal };
 }

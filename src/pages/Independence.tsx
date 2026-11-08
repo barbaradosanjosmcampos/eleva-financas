@@ -1,3 +1,5 @@
+import WealthEducation from "../components/WealthEducation";
+import { Info, Calculator } from "lucide-react";
 import { useState } from "react";
 import {
   LineChart,
@@ -272,10 +274,20 @@ export default function Independence({
               </div>
               <section className="panel" aria-label="Comparação com a meta">
                 <h3>Seu objetivo no horizonte</h3>
-                <p>
-                  Patrimônio-alvo em reais de hoje:{" "}
-                  <strong>{money(result.target)}</strong>
-                </p>
+                <p><Calculator size={18} aria-hidden="true" /> Da renda desejada ao patrimônio-alvo estimado</p>
+                <div className="target-steps" aria-live="polite" aria-atomic="true">
+                  <div><span>1 · Transforme a renda mensal em anual</span><strong>{money(input.income)} × 12 = {money(result.annualIncome)}</strong></div>
+                  <div><span>2 · Divida pela hipótese de retirada anual</span><strong>{money(result.annualIncome)} ÷ {input.withdrawal.toLocaleString("pt-BR")}% = {money(result.target)}</strong><small>A taxa em decimal é {(input.withdrawal / 100).toLocaleString("pt-BR", { maximumFractionDigits: 5 })}.</small></div>
+                </div>
+                <dl className="wealth-comparison" aria-live="polite">
+                  <div><dt>Patrimônio-alvo estimado</dt><dd>{money(result.target)}</dd></div>
+                  <div><dt>Patrimônio projetado no horizonte</dt><dd>{money(result.last.real)}</dd></div>
+                </dl>
+                <p>Ambos em reais de hoje: o alvo vem da renda desejada; o projetado vem do patrimônio inicial, aportes, prazo, retorno e inflação.</p>
+                <aside className="notice withdrawal-warning" aria-label="Aviso sobre a taxa de retirada">
+                  <Info size={20} aria-hidden="true" />
+                  <p>A taxa de retirada utilizada é uma hipótese de planejamento, não uma regra universal nem uma garantia de renda sustentável. Impostos, inflação, custos, volatilidade, duração da aposentadoria e sequência dos retornos podem alterar os resultados. O patrimônio pode se esgotar.</p>
+                </aside>
                 <p>
                   {result.gap < 0
                     ? "Diferença abaixo do objetivo"
@@ -374,6 +386,7 @@ export default function Independence({
           )}
         </div>
       </div>
+      <WealthEducation />
       <div className="notice">
         <p>
           Não considera impostos, taxas, variação de aportes ou oscilações de

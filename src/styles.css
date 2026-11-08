@@ -3223,3 +3223,26 @@ dialog:has(.asset-assistant) {
     padding: 18px;
   }
 }
+
+.target-steps { display: grid; gap: 12px; margin: 18px 0; }
+.target-steps > div { display: grid; gap: 8px; padding: 16px; background: #f4f7f4; border-left: 4px solid #bea471; border-radius: 8px; }
+.target-steps strong { font-size: 1.1rem; overflow-wrap: anywhere; }
+.wealth-comparison, .wealth-ledger { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.wealth-comparison > div, .wealth-ledger > div { padding: 16px; border: 1px solid #d9e3dc; border-radius: 10px; }
+.wealth-comparison dd, .wealth-ledger dd { margin: 8px 0 0; font-size: 1.2rem; font-weight: 700; color: #174f40; overflow-wrap: anywhere; }
+.withdrawal-warning { margin-top: 18px; }
+.wealth-education { margin: 24px 0; }
+.wealth-concepts, .wealth-example-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 20px 0; }
+.wealth-concepts article { padding: 18px; background: #f4f7f4; border-radius: 12px; min-width: 0; }
+.wealth-concepts svg { color: #174f40; }
+.wealth-education summary { cursor: pointer; }
+.wealth-education summary svg { vertical-align: middle; }
+.wealth-education :focus-visible { outline: 3px solid #174f40; outline-offset: 4px; }
+@media (max-width: 700px) {
+  .wealth-concepts, .wealth-example-fields, .wealth-comparison, .wealth-ledger { grid-template-columns: 1fr; }
+}
+.wealth-education { padding: 24px; line-height: 1.65; }
+.wealth-education h4 { margin: 12px 0; }
+.wealth-education > details { margin: 16px 0; }
+.withdrawal-warning { color: #594820; font-size: 0.95rem; }
+@media (max-width: 600px) { .wealth-education { padding: 18px; } }
