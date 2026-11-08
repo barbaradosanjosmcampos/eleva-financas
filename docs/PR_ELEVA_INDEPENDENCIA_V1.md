@@ -12,6 +12,6 @@ As hipóteses são temporárias e a interface informa seu reinício ao sair da �
 
 - `npm test`: 77 testes unitários, incluindo cenários extremos e consistência entre simuladores.
 - `npm run build`: TypeScript estrito e build Vite.
-- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=2`: suíte desktop/mobile, incluindo novos cenários de jornada, cálculo, migração v1, isolamento dos modos e importação idempotente.
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=2`: 38 testes aprovados em desktop/mobile, incluindo novos cenários de jornada, cálculo, migração v1, isolamento dos modos e importação idempotente.
 
 Revisar e mesclar manualmente; sem deploy ou merge automático.
