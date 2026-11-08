@@ -3333,6 +3333,28 @@ fieldset:disabled { opacity: .7; }
   font-size: 14px;
 }
 .intelligent-investments .smart-scenario { padding: 0 1rem 1rem; }
+.product-scenario-result { min-width: 0; padding: clamp(16px, 3vw, 28px); border: 1px solid #bca46b; border-top: 4px solid #bca46b; border-radius: 18px; background: #faf7ef; color: #123e33; }
+.product-scenario-result h4 { margin: 0 0 8px; font-size: 1.4rem; }
+.product-scenario-result p { font-size: 1rem; line-height: 1.65; }
+.product-scenario-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+.product-scenario-card { min-width: 0; padding: 20px 16px; border: 1px solid #d2dfd7; border-radius: 14px; background: #fff; }
+.product-scenario-card dt { font-size: .95rem; line-height: 1.5; font-weight: 600; }
+.product-scenario-card dd { margin: 12px 0 0; font-size: clamp(1.35rem, 2.2vw, 1.85rem); font-weight: 700; line-height: 1.3; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.product-scenario-card span { display: block; margin-top: 8px; font-size: .85rem; line-height: 1.5; }
+.product-scenario-card.scenario-gain { color: #14583a; background: #edf6ef; }
+.product-scenario-card.scenario-loss { color: #8a2424; background: #fff1ef; }
+.product-scenario-card.scenario-zero { color: #3d5148; background: #f0f3f1; }
+.product-scenario-card.scenario-total { background: #123e33; color: #fff; border-color: #123e33; }
+.product-scenario-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.product-scenario-context dt { font-weight: 700; line-height: 1.5; }
+.product-scenario-context dd { margin: 4px 0 0; font-size: 1rem; line-height: 1.6; }
+.product-scenario-warning { padding-top: 16px; border-top: 1px solid #c9bd9d; font-weight: 600; }
+@media (max-width: 1100px) { .product-scenario-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) {
+  .product-scenario-cards, .product-scenario-context { grid-template-columns: 1fr; }
+  .product-scenario-card dd { font-size: 1.6rem; }
+  .intelligent-investments .smart-scenario { padding: 0 0 1rem; }
+}
 .intelligent-investments .field-help-button,
 .contract-fields .field-help-button { min-width: 44px; min-height: 44px; color: #806a37; }
 .intelligent-investments :focus-visible,

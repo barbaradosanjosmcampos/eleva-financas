@@ -240,17 +240,96 @@ function ProductInsight({ asset, data }: { asset: Asset; data: FinanceData }) {
               </p>
             )}
             {result && (
-              <div role="status" className="position-meaning">
-                <strong>Cenário hipotético bruto: {money(result.value)}</strong>
+              <section
+                role="status"
+                aria-label="Resultado do cenário hipotético"
+                className="product-scenario-result"
+              >
+                <h4>Cenário hipotético</h4>
                 <p>
-                  Variação simulada: {money(result.gain)} (
-                  {percent(result.returnPercent)}). Prazo: {periods}{" "}
-                  {cdi ? "dias úteis" : "dias corridos"}.{" "}
-                  {indexed &&
-                    `Referência manual: ${annualRate}% a.a., de ${dateLabel(asOf)}, fonte: ${source}.`}{" "}
-                  Não é saldo real, promessa de retorno ou recomendação.
+                  Projeção para estudo a partir do saldo informado, sem garantia
+                  de retorno.
                 </p>
-              </div>
+                <dl className="product-scenario-cards">
+                  <div className="product-scenario-card">
+                    <dt>Capital inicial</dt>
+                    <dd>{money(asset.current)}</dd>
+                  </div>
+                  <div
+                    className={`product-scenario-card scenario-${result.gain < 0 ? "loss" : result.gain > 0 ? "gain" : "zero"}`}
+                  >
+                    <dt>
+                      {result.gain < 0
+                        ? "Perda simulada"
+                        : result.gain > 0
+                          ? "Ganho simulado"
+                          : "Ganho ou perda simulada"}
+                    </dt>
+                    <dd>{money(result.gain)}</dd>
+                    <span>
+                      {result.gain < 0
+                        ? "Redução hipotética do capital"
+                        : result.gain > 0
+                          ? "Crescimento hipotético do capital"
+                          : "Sem variação do capital"}
+                    </span>
+                  </div>
+                  <div className="product-scenario-card scenario-total">
+                    <dt>Patrimônio bruto projetado</dt>
+                    <dd>{money(result.value)}</dd>
+                  </div>
+                  <div className="product-scenario-card">
+                    <dt>Rentabilidade simulada</dt>
+                    <dd>{percent(result.returnPercent)}</dd>
+                  </div>
+                </dl>
+                <dl className="product-scenario-context">
+                  <div>
+                    <dt>Prazo</dt>
+                    <dd>
+                      {periods} {cdi ? "dias úteis" : "dias corridos"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Modalidade contratada</dt>
+                    <dd>{contractLabel(contract)}</dd>
+                  </div>
+                  <div>
+                    <dt>Taxa de referência hipotética</dt>
+                    <dd>
+                      {indexed
+                        ? `${cdi ? "CDI" : "IPCA"}: ${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 6 }).format(Number(annualRate))}% a.a.`
+                        : "Não se aplica: cenário usa a taxa prefixada contratada como hipótese constante."}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Data da hipótese</dt>
+                    <dd>
+                      {indexed
+                        ? dateLabel(asOf)
+                        : "Sem referência externa; taxa do cadastro."}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Fonte da hipótese</dt>
+                    <dd>
+                      {indexed
+                        ? source
+                        : "Taxa contratada informada manualmente no cadastro."}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Data do capital inicial</dt>
+                    <dd>{dateLabel(asset.valuationDate!)}</dd>
+                  </div>
+                </dl>
+                <p className="product-scenario-warning">
+                  Valores brutos, hipotéticos e não garantidos. Não incluem
+                  impostos ou custos. Não representam rendimento recebido,
+                  promessa de retorno ou recomendação. NÃO alteram a carteira
+                  real, o saldo ou o histórico.
+                </p>
+              </section>
             )}
           </form>
         )}

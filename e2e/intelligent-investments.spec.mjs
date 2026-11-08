@@ -190,3 +190,155 @@ test("registro antigo com perda não recebe data ou taxa automaticamente, inclus
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   expect(await stored(page)).toBe(before);
 });
+
+for (const scenario of [
+  {
+    name: "ganho",
+    mode: "ipca",
+    rate: 6,
+    reference: "4",
+    label: "Ganho simulado",
+    gain: "102,40",
+    total: "1.102,40",
+    percent: "10,2%",
+  },
+  {
+    name: "zero",
+    mode: "fixed",
+    rate: 0,
+    label: "Ganho ou perda simulada",
+    gain: "0,00",
+    total: "1.000,00",
+    percent: "0%",
+  },
+  {
+    name: "perda",
+    mode: "ipca",
+    rate: 0,
+    reference: "-2",
+    label: "Perda simulada",
+    gain: "-R$",
+    total: "980,00",
+    percent: "-2%",
+  },
+  {
+    name: "CDI",
+    mode: "cdi",
+    rate: 100,
+    reference: "10",
+    label: "Ganho simulado",
+    gain: "100,00",
+    total: "1.100,00",
+    percent: "10%",
+  },
+]) {
+  test(`cartões de cenário: ${scenario.name}, leitura e carteira real preservada`, async ({
+    page,
+  }, testInfo) => {
+    await seed(page, [
+      {
+        ...baseAsset(),
+        remuneration: { version: 1, mode: scenario.mode, rate: scenario.rate },
+      },
+    ]);
+    const panel = page.getByRole("region", {
+      name: "ELEVA Investimentos Inteligentes",
+    });
+    await expect(panel).toBeVisible();
+    const before = await page.evaluate(() => ({ ...localStorage }));
+    await page.evaluate(() => {
+      window.scenarioWrites = 0;
+      const original = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (...args) {
+        if (this === localStorage) window.scenarioWrites++;
+        return original.apply(this, args);
+      };
+    });
+    const requests = [];
+    page.on("request", (request) => {
+      if (!["GET", "HEAD"].includes(request.method()))
+        requests.push(request.url());
+    });
+    await panel
+      .getByText("Simular um cenário deste produto", { exact: true })
+      .click();
+    await field(
+      page,
+      scenario.mode === "cdi"
+        ? "Prazo hipotético (dias úteis)"
+        : "Prazo hipotético (dias corridos)",
+    ).fill(scenario.mode === "cdi" ? "252" : "365");
+    if (scenario.reference) {
+      await field(
+        page,
+        scenario.mode === "cdi"
+          ? "Hipótese de CDI efetivo (% ao ano)"
+          : "Hipótese de IPCA (% ao ano)",
+      ).fill(scenario.reference);
+      await field(page, "Data da referência da hipótese").fill(day());
+      await field(page, "Fonte ou identificação da hipótese").fill(
+        "Hipótese pessoal para estudo",
+      );
+    }
+    await page
+      .getByRole("checkbox", { name: /Entendo que este cenário/ })
+      .check();
+    await page
+      .getByRole("button", { name: "Calcular cenário hipotético" })
+      .click();
+    const result = panel.getByRole("status");
+    await expect(
+      result.getByRole("heading", { name: "Cenário hipotético", exact: true }),
+    ).toBeVisible();
+    const cards = result.locator(".product-scenario-card");
+    await expect(cards).toHaveCount(4);
+    for (const [label, value] of [
+      ["Capital inicial", "1.000,00"],
+      [scenario.label, scenario.gain],
+      ["Patrimônio bruto projetado", scenario.total],
+      ["Rentabilidade simulada", scenario.percent],
+    ]) {
+      const card = cards.filter({
+        has: page.getByText(label, { exact: true }),
+      });
+      await expect(card).toContainText(value);
+      await expect(card).toBeVisible();
+    }
+    await expect(result).toContainText("Modalidade contratada");
+    await expect(result).toContainText("Taxa de referência hipotética");
+    await expect(result).toContainText("Data da hipótese");
+    await expect(result).toContainText("Fonte da hipótese");
+    await expect(result).toContainText("Não incluem impostos ou custos");
+    await expect(result).toContainText("NÃO alteram a carteira real");
+    if (scenario.reference) {
+      await expect(result).toContainText("Hipótese pessoal para estudo");
+      await expect(result).toContainText(
+        new Date(day() + "T12:00:00").toLocaleDateString("pt-BR"),
+      );
+    } else await expect(result).toContainText("Não se aplica");
+    expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(before);
+    expect(requests).toEqual([]);
+    expect(await page.evaluate(() => window.scenarioWrites)).toBe(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await result.screenshot({
+      path: testInfo.outputPath(`cenario-${scenario.name}.png`),
+    });
+    if (testInfo.project.name === "mobile") {
+      await page.setViewportSize({ width: 320, height: 700 });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+    await page.reload();
+    expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(before);
+    expect(JSON.parse(await stored(page)).personal.assets[0].current).toBe(
+      1000,
+    );
+  });
+}

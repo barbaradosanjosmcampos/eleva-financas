@@ -284,3 +284,42 @@ test("datas incoerentes e metadados incompatíveis são rejeitados; operação a
   assert.equal(next.assets[0].valuationDate, day);
   assert.equal(next.assets[0].current, 1200);
 });
+
+test("ganho, zero e perda hipotéticos preservam integralmente saldo e carteira real", () => {
+  for (const [mode, rate, annualRate, expected] of [
+    ["fixed", 10, undefined, 1210],
+    ["fixed", 0, undefined, 1100],
+    ["ipca", 0, -2, 1078],
+  ]) {
+    const asset = prepareAsset(
+      emptyFinances(),
+      {
+        ...draft(),
+        remunerationMode: mode,
+        contractedRate: String(rate),
+      },
+      undefined,
+      day,
+    );
+    const wallet = { ...emptyFinances(), assets: [asset] };
+    const before = structuredClone(wallet);
+    const args = {
+      contract: asset.remuneration,
+      principal: asset.current,
+      periods: 365,
+      confirmed: true,
+      ...(annualRate === undefined
+        ? {}
+        : { reference: ref("ipca", annualRate) }),
+    };
+    const inputBefore = structuredClone(args);
+    const result = simulateContract(args);
+    close(result.value, expected);
+    close(result.gain, expected - asset.current);
+    assert.deepEqual(args, inputBefore);
+    assert.deepEqual(wallet, before);
+    assert.equal(wallet.assets[0].current, 1100);
+    assert.deepEqual(wallet.operations, []);
+    assert.deepEqual(wallet.snapshots, []);
+  }
+});
