@@ -160,8 +160,10 @@ test("operações, proventos e reinvestimento não duplicam capital ou resultado
   await page
     .getByRole("button", { name: "Registrar provento", exact: true })
     .click();
-  await page.getByLabel("Tipo de provento").selectOption("dividend");
-  await page.getByLabel("Valor recebido (R$)").fill("100");
+  await page
+    .getByLabel("Tipo de provento", { exact: true })
+    .selectOption("dividend");
+  await page.getByLabel("Valor recebido (R$)", { exact: true }).fill("100");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Registrar provento", exact: true })
@@ -184,7 +186,9 @@ test("operações, proventos e reinvestimento não duplicam capital ou resultado
   await expect(
     page.locator(".performance-strip").getByText("18,8%", { exact: true }),
   ).toBeVisible();
-  await page.getByLabel("Filtrar operações por tipo").selectOption("income");
+  await page
+    .getByLabel("Filtrar operações por tipo", { exact: true })
+    .selectOption("income");
   await expect(page.locator(".operation-history tbody tr")).toHaveCount(1);
   await expect(
     page
@@ -201,19 +205,30 @@ test("cadastro, validação de saídas, histórico real, educação e simulador"
 }, testInfo) => {
   await seed(page);
   await page.getByRole("button", { name: "Novo ativo", exact: true }).click();
-  await page.getByLabel("Nome do ativo").fill("ETF demonstração");
-  await page.getByLabel("Código (opcional)").fill("DEMO11");
+  await page.getByRole("button", { name: /Modo rápido/ }).click();
+  await page
+    .getByLabel("Tipo de investimento", { exact: true })
+    .selectOption("etf");
+  await page
+    .getByLabel("Nome do ativo", { exact: true })
+    .fill("ETF demonstração");
+  await page.getByLabel("Código (opcional)", { exact: true }).fill("DEMO11");
   await page
     .getByLabel("Instituição", { exact: true })
     .fill("Instituição fictícia");
-  await page.getByLabel("Classe do ativo").selectOption("ETFs");
   await page.getByLabel("Quantidade inicial", { exact: true }).fill("10");
-  await page.getByLabel("Preço médio inicial (R$)").fill("100");
-  await page.getByLabel("Valor atual da posição (R$)").fill("1050");
+  await page
+    .getByLabel("Preço médio inicial (R$)", { exact: true })
+    .fill("100");
+  await page
+    .getByLabel("Valor atual da posição (R$)", { exact: true })
+    .fill("1050");
   await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByRole("button", { name: "Editar ETF demonstração" }).click();
-  await page.getByLabel("Valor atual da posição (R$)").fill("1100");
+  await page
+    .getByLabel("Valor atual da posição (R$)", { exact: true })
+    .fill("1100");
   await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
   await completeQuantity(page);
   await trade(page, "sell", 2000, 20, 0);
@@ -222,10 +237,12 @@ test("cadastro, validação de saídas, histórico real, educação e simulador"
   await page
     .getByRole("button", { name: "Registrar posição", exact: true })
     .click();
-  await page.getByLabel("Data do registro").fill("2025-10-01");
-  await page.getByLabel("Patrimônio total registrado (R$)").fill("900");
+  await page.getByLabel("Data do registro", { exact: true }).fill("2025-10-01");
   await page
-    .getByLabel("Origem ou observação (opcional)")
+    .getByLabel("Patrimônio total registrado (R$)", { exact: true })
+    .fill("900");
+  await page
+    .getByLabel("Origem ou observação (opcional)", { exact: true })
     .fill("Extrato de demonstração");
   await page.getByRole("button", { name: "Salvar registro" }).click();
   const d = await page.evaluate(
@@ -261,10 +278,12 @@ test("cadastro, validação de saídas, histórico real, educação e simulador"
   await expect(
     page.getByRole("heading", { name: "Visualize as possibilidades" }),
   ).toBeVisible();
-  await page.getByLabel("Valor inicial (R$)").fill("1000");
-  await page.getByLabel("Aporte mensal (R$)").fill("100");
-  await page.getByLabel("Retorno hipotético (% ao ano)").fill("0");
-  await page.getByLabel("Prazo (anos)").fill("2");
+  await page.getByLabel("Valor inicial (R$)", { exact: true }).fill("1000");
+  await page.getByLabel("Aporte mensal (R$)", { exact: true }).fill("100");
+  await page
+    .getByLabel("Retorno hipotético (% ao ano)", { exact: true })
+    .fill("0");
+  await page.getByLabel("Prazo (anos)", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Calcular projeção" }).click();
   await expect(page.locator(".projection-total")).toContainText("3.400,00");
 });

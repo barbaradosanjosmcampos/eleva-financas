@@ -72,6 +72,9 @@ export default function OperationHistory({ data }: { data: FinanceData }) {
                   <strong>
                     {data.assets.find((a) => a.id === o.assetId)?.name}
                   </strong>
+                  {o.reference && (
+                    <small className="block muted">Ref.: {o.reference}</small>
+                  )}
                   {o.note && (
                     <small className="block muted operation-note">
                       {o.note}
@@ -92,6 +95,11 @@ export default function OperationHistory({ data }: { data: FinanceData }) {
                 </td>
                 <td className={isEntry(o.type) ? "negative" : "positive"}>
                   {isEntry(o.type) ? "−" : "+"} {money(o.amount)}
+                  {o.redeemedPrincipal != null && (
+                    <small className="block muted">
+                      Capital baixado: {money(o.redeemedPrincipal)}
+                    </small>
+                  )}
                 </td>
               </tr>
             ))}
