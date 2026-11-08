@@ -26,7 +26,7 @@ export default function Transactions({
   update,
 }: {
   data: FinanceData;
-  update: (d: FinanceData) => void;
+  update: (d: FinanceData) => boolean;
 }) {
   const [editing, setEditing] = useState<Transaction | null>();
   const [search, setSearch] = useState("");
@@ -54,13 +54,13 @@ export default function Transactions({
       date: String(f.get("date")),
     };
     if (!t.description || !Number.isFinite(t.amount) || t.amount <= 0) return;
-    update({
+    const saved = update({
       ...data,
       transactions: editing
         ? data.transactions.map((r) => (r.id === t.id ? t : r))
         : [...data.transactions, t],
     });
-    setEditing(undefined);
+    if (saved) setEditing(undefined);
   }
   return (
     <>

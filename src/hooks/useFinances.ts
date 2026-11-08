@@ -1,79 +1,148 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { FinanceData } from "../types";
 import { createDemo } from "../lib/demo";
-import { validateV2 } from "../lib/investments.mjs";
 import { today } from "../lib/format";
-import { loadFinances, persistFinances } from "../lib/storage.mjs";
+import {
+  emptyFinances,
+  loadExperience,
+  saveExperience,
+  selectMode,
+  updateActive,
+  rawRecords,
+  makeBackup,
+  restoreWallet,
+  type DataMode,
+  type Experience,
+  type BackupPreview,
+} from "../lib/experience.mjs";
 export function useFinances() {
   const [initial] = useState(() =>
-    loadFinances(
+    loadExperience(
       {
-        getItem: (key) => localStorage.getItem(key),
-        setItem: (key, value) => localStorage.setItem(key, value),
+        getItem: (k) => localStorage.getItem(k),
+        setItem: (k, v) => localStorage.setItem(k, v),
       },
-      createDemo,
       today(),
     ),
   );
+  const revision = useRef(initial.storedRevision);
+  const [session, setSession] = useState(initial.session);
   const [warning, setWarning] = useState(initial.warning);
-  const [data, setData] = useState<FinanceData>(initial.data);
-  const [storageBlocked] = useState(!initial.writable);
+  const [storageBlocked, setStorageBlocked] = useState(initial.blocked);
   useEffect(() => {
-    if (!initial.needsSave) return;
-    try {
-      persistFinances(localStorage, initial.data);
-    } catch {
-      setWarning(
-        "A migração está em memória, mas não foi possível salvá-la. O formato anterior permanece intacto. Novas alterações podem ser perdidas ao fechar a página.",
-      );
+    if (initial.needsSave) {
+      try {
+        saveExperience(localStorage, initial.session, revision.current);
+        revision.current = JSON.stringify(initial.session);
+      } catch {
+        setWarning(
+          "Os registros anteriores continuam intactos, mas a cópia para o novo espaço não pôde ser salva. Exporte um backup antes de fechar a página.",
+        );
+      }
     }
   }, [initial]);
-  const update = (next: FinanceData) => {
-    if (storageBlocked) return;
-    if (!validateV2(next)) {
-      setWarning(
-        "A alteração não passou pela validação de integridade. Seus registros anteriores foram preservados.",
-      );
-      return;
-    }
-    setData(next);
+  function commit(next: Experience) {
     try {
-      persistFinances(localStorage, next);
+      saveExperience(localStorage, next, revision.current);
+      revision.current = JSON.stringify(next);
+      setSession(next);
       setWarning("");
+      return true;
+    } catch (error) {
+      setWarning(
+        error instanceof Error && error.message.includes("outra aba")
+          ? error.message
+          : "Não foi possível salvar neste navegador. A alteração não foi gravada; os dados anteriores foram mantidos. Verifique o armazenamento disponível e tente novamente.",
+      );
+      return false;
+    }
+  }
+  function update(data: FinanceData) {
+    if (storageBlocked) return false;
+    try {
+      return commit(updateActive(session, data));
     } catch {
       setWarning(
-        "Não foi possível salvar neste navegador. As alterações estão apenas em memória. Exporte uma cópia antes de fechar a página.",
+        "A alteração não passou pela validação de integridade. Os registros anteriores foram preservados.",
       );
+      return false;
     }
-  };
+  }
+  function switchMode(mode: DataMode) {
+    if (storageBlocked) return false;
+    return commit(selectMode(session, mode, createDemo, today()));
+  }
+  function dismissGuide(dismissed: boolean) {
+    if (storageBlocked || !session.activeMode) return false;
+    return commit({
+      ...session,
+      guideDismissed: {
+        ...session.guideDismissed,
+        [session.activeMode]: dismissed,
+      },
+    });
+  }
   function exportBackup() {
-    // Include raw stored data to make recovery possible even for an invalid schema.
-    let raw: Record<string, string | null> = {};
+    let stored: Record<string, string | null> = {};
+    let backupSession = session;
     try {
-      raw = {
-        "eleva-financas-v1": localStorage.getItem("eleva-financas-v1"),
-        "eleva-financas-v2": localStorage.getItem("eleva-financas-v2"),
-      };
+      stored = rawRecords(localStorage);
+      const current = loadExperience(localStorage, today());
+      if (!current.blocked) backupSession = current.session;
     } catch {
-      /* Memory copy still available. */
+      /* Memory backup still available. */
     }
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify(
-            { exportedAt: new Date().toISOString(), memory: data, stored: raw },
-            null,
-            2,
-          ),
-        ],
-        { type: "application/json" },
-      ),
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          makeBackup(backupSession, stored, new Date().toISOString()),
+          null,
+          2,
+        ),
+      ],
+      { type: "application/json" },
     );
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `eleva-backup-${today()}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return { data, update, warning, storageBlocked, exportBackup };
+  function restore(backup: BackupPreview, mode: DataMode, confirmed: boolean) {
+    try {
+      const raw = storageBlocked ? rawRecords(localStorage) : undefined;
+      const next = restoreWallet(
+        session,
+        backup,
+        mode,
+        confirmed,
+        new Date().toISOString(),
+        raw,
+      );
+      const ok = commit(next);
+      if (ok) setStorageBlocked(false);
+      return ok;
+    } catch {
+      setWarning(
+        "Não foi possível restaurar. Confira o backup e a confirmação; os dados atuais foram mantidos.",
+      );
+      return false;
+    }
+  }
+  return {
+    data: session.activeMode ? session[session.activeMode]! : emptyFinances(),
+    mode: session.activeMode,
+    session,
+    update,
+    switchMode,
+    warning,
+    storageBlocked,
+    exportBackup,
+    restore,
+    dismissGuide,
+    guideDismissed: session.activeMode
+      ? session.guideDismissed[session.activeMode]
+      : false,
+  };
 }

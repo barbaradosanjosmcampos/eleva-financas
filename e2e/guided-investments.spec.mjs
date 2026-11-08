@@ -25,7 +25,12 @@ async function seed(page, data = empty()) {
 const fill = (page, label, value) =>
   page.getByLabel(label, { exact: true }).fill(String(value));
 const stored = (page) =>
-  page.evaluate((key) => JSON.parse(localStorage.getItem(key)), key);
+  page.evaluate(
+    (key) =>
+      JSON.parse(localStorage.getItem("eleva-experiencia-v1"))?.personal ??
+      JSON.parse(localStorage.getItem(key)),
+    key,
+  );
 async function startTrade(page, type) {
   await page
     .getByRole("button", { name: "Registrar operação", exact: true })
@@ -44,7 +49,9 @@ test("ELEVA Ensina guia CDB sem quantidade, revisa, salva e edita o saldo", asyn
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await seed(page);
-  await page.getByRole("button", { name: "Novo ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Novo investimento", exact: true })
+    .click();
   await expect(page.getByText("ELEVA Ensina", { exact: true })).toBeVisible();
   await expect(page.locator(".investment-type-grid>button")).toHaveCount(6);
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
@@ -52,11 +59,25 @@ test("ELEVA Ensina guia CDB sem quantidade, revisa, salva e edita o saldo", asyn
   await page
     .getByRole("button", { name: "CDB / LCI / LCA", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: /Preencher exemplo fictício/ })
-    .click();
+  await page.getByRole("button", { name: /Ver exemplo fictício/ }).click();
+  await expect(page.locator(".example-readonly")).toContainText(
+    "não serão copiados",
+  );
   expect((await stored(page)).assets).toHaveLength(0);
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(
+    page.getByLabel("Nome do investimento", { exact: true }),
+  ).toHaveValue("");
+  await page
+    .getByLabel("Nome do investimento", { exact: true })
+    .fill("CDB demonstração");
+  await page
+    .getByLabel("Onde está seu investimento?", { exact: true })
+    .fill("Banco exemplo");
+  await page
+    .getByLabel("Valor aplicado inicial (R$)", { exact: true })
+    .fill("10000");
+  await page.getByLabel("Saldo atualizado (R$)", { exact: true }).fill("10350");
   await expect(
     page.getByLabel("Valor aplicado inicial (R$)", { exact: true }),
   ).toHaveValue("10000");
@@ -89,7 +110,9 @@ test("ELEVA Ensina guia CDB sem quantidade, revisa, salva e edita o saldo", asyn
       .locator(".assistant-review dd")
       .getByText("R$ 350,00", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   let d = await stored(page);
   expect(d.assets).toHaveLength(1);
   expect(d.assets[0].openingQuantity).toBeNull();
@@ -102,7 +125,9 @@ test("ELEVA Ensina guia CDB sem quantidade, revisa, salva e edita o saldo", asyn
     page.getByRole("button", { name: /Modo rápido/ }),
   ).toHaveAttribute("aria-pressed", "true");
   await fill(page, "Saldo atualizado (R$)", 10400);
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   d = await stored(page);
   expect(d.assets[0].current).toBe(10400);
   expect(d.assets[0].invested).toBe(10000);
@@ -155,15 +180,19 @@ test("modo rápido e guiado compartilham dados e mantêm ativos por unidades", a
   page,
 }, testInfo) => {
   await seed(page);
-  await page.getByRole("button", { name: "Novo ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Novo investimento", exact: true })
+    .click();
   await page.getByRole("button", { name: /Modo rápido/ }).click();
   await page
     .getByLabel("Tipo de investimento", { exact: true })
     .selectOption("stocks");
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText("nome");
-  await fill(page, "Nome do ativo", "Ações de exemplo");
-  await fill(page, "Instituição", "Corretora fictícia");
+  await fill(page, "Nome do investimento", "Ações de exemplo");
+  await fill(page, "Onde está seu investimento?", "Corretora fictícia");
   await fill(page, "Quantidade inicial", 10);
   await fill(page, "Preço médio inicial (R$)", 20);
   await fill(page, "Valor atual da posição (R$)", 220);
@@ -172,27 +201,33 @@ test("modo rápido e guiado compartilham dados e mantêm ativos por unidades", a
   await expect(
     page.getByLabel("Quantidade inicial", { exact: true }),
   ).toHaveValue("10");
-  await expect(page.getByLabel("Nome do ativo", { exact: true })).toHaveValue(
-    "Ações de exemplo",
-  );
+  await expect(
+    page.getByLabel("Nome do investimento", { exact: true }),
+  ).toHaveValue("Ações de exemplo");
   await page.getByRole("button", { name: /Modo rápido/ }).click();
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   const d = await stored(page);
   expect(d.assets[0].openingQuantity).toBe(10);
   expect(d.assets[0].openingInvested).toBe(200);
   expect(d.assets[0].current).toBe(220);
   expect(d.operations).toHaveLength(0);
-  await page.getByRole("button", { name: "Novo ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Novo investimento", exact: true })
+    .click();
   await page.getByRole("button", { name: /Modo rápido/ }).click();
   await page
     .getByLabel("Tipo de investimento", { exact: true })
     .selectOption("stocks");
-  await fill(page, "Nome do ativo", "Ações de exemplo");
-  await fill(page, "Instituição", "Corretora fictícia");
+  await fill(page, "Nome do investimento", "Ações de exemplo");
+  await fill(page, "Onde está seu investimento?", "Corretora fictícia");
   await fill(page, "Quantidade inicial", 10);
   await fill(page, "Preço médio inicial (R$)", 20);
   await fill(page, "Valor atual da posição (R$)", 220);
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText(
     "Já existe um investimento",
   );
@@ -238,9 +273,11 @@ test("edição de v2 com operações mantém custo e histórico e bloqueia conve
   await expect(
     page.getByText("Capital inicial preservado: R$ 1.000,00", { exact: false }),
   ).toBeVisible();
-  await fill(page, "Nome do ativo", "Ativo anterior renomeado");
+  await fill(page, "Nome do investimento", "Ativo anterior renomeado");
   await fill(page, "Valor atual da posição (R$)", 1700);
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   await page.reload();
   const d = await stored(page);
   expect(d.assets[0].openingQuantity).toBe(10);

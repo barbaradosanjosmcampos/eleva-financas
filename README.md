@@ -20,6 +20,18 @@ npm run preview
 
 Se o cache padrão não for gravável, acrescente `--cache /tmp/eleva-npm-cache` ao comando de instalação.
 
+## Experiência para começar com segurança
+
+No primeiro acesso sem registros anteriores, escolha **Explorar demonstração** ou **Começar do zero**. A demonstração contém exemplos fictícios; a carteira pessoal começa vazia. O seletor **Seu espaço** e o indicador no topo mostram o modo ativo em todas as telas. Alternar apenas muda o espaço exibido: não reinicializa nem elimina a outra carteira.
+
+O Dashboard, os lançamentos, as metas e os investimentos recebem somente os dados do modo ativo. O Simulador começa com o patrimônio desse espaço, permite alterar as hipóteses e não grava projeções como saldo real. Ao trocar de modo, formulários e hipóteses de tela são reiniciados para não reaproveitar dados do outro espaço; os registros salvos permanecem separados.
+
+Em Investimentos, uma carteira vazia mostra uma apresentação e **Cadastrar meu primeiro investimento**, sem gráficos vazios. Um guia contextual explica modalidade, onde está o investimento, valor aplicado, saldo atualizado e acompanhamento. É possível ignorá-lo, manter essa preferência ao recarregar e reabri-lo pelo botão do guia.
+
+Após gravar um investimento, a confirmação mostra o nome e as ações **Ver minha carteira** e **Cadastrar outro investimento**. Edições mostram **Investimento atualizado!**. A confirmação aparece somente depois da gravação bem-sucedida. Falhas mantêm o formulário para tentar novamente, sem criar registros extras.
+
+Os campos usam linguagem cotidiana e ajudas **Onde encontro essa informação?** para localizar dados no extrato. Os nomes técnicos internos continuam preservados.
+
 ## Áreas do aplicativo
 
 - **Dashboard:** receitas, despesas, saldo mensal, patrimônio investido, filtro por mês, gráficos e últimos lançamentos.
@@ -39,7 +51,7 @@ O assistente **ELEVA Ensina** começa pela escolha do tipo: **CDB / LCI / LCA, T
 - **Modo guiado:** três etapas (tipo, posição e revisão), com explicações curtas e exemplos por campo. Nada é salvo até a confirmação final.
 - **Modo rápido:** todos os campos em uma tela, com ajuda disponível nos ícones de interrogação. É o padrão ao editar investimentos existentes.
 - O mesmo rascunho é usado nos dois modos: alternar entre eles não perde o preenchimento.
-- **Preencher exemplo fictício** preenche uma demonstração editável do tipo escolhido, sem salvar ou criar operações. Se já houver preenchimento, pede confirmação para substituí-lo. Os exemplos não são recomendações nem taxas prometidas.
+- Na demonstração, **Preencher exemplo fictício** preenche um rascunho editável, sem salvar ou criar operações; pede confirmação antes de substituir campos já preenchidos. Na carteira pessoal, **Ver exemplo fictício** abre apenas uma consulta, sem copiar números para o cadastro. Ajuda e exemplos não são recomendações nem taxas prometidas.
 
 ### Duas formas de controlar a posição
 
@@ -95,19 +107,38 @@ Um registro histórico manual apenas alimenta o gráfico: não altera os ativos 
 
 O espaço educativo explica renda fixa, Tesouro Direto, ações, FIIs e ETFs e seus riscos gerais. O botão **Abrir simulador** leva à área existente, sem alterar posições ou assumir taxas prometidas.
 
-## Armazenamento e migração segura
+## Armazenamento, preservação e backups
 
-Os exemplos são fictícios; não há servidor, autenticação, integração bancária, API financeira, pagamentos, chaves de API ou recomendações personalizadas. Valores permanecem no navegador. Não use esta demonstração para guardar informações sensíveis ou como único registro financeiro.
+Não há servidor, login, sincronização entre dispositivos, integração bancária, API financeira, pagamentos ou chaves de API. Os dados ficam neste navegador. Faça backups e não use a demonstração como único registro financeiro.
 
-- A chave continua sendo `eleva-financas-v2`, com `schemaVersion: 2`. A evolução é aditiva: tipo e forma de controle são campos opcionais nos dados anteriores, sem troca de chave ou migração destrutiva. Registros sem forma de controle continuam com a semântica anterior por unidades; quantidade desconhecida não é reinterpretada automaticamente como posição por valor.
-- Na primeira abertura, se não existir v2, lê e valida `eleva-financas-v1`, preservando lançamentos, metas, IDs, nomes, classes, custo e valor atual dos ativos.
-- A chave v1 **não é apagada nem modificada**. A v2 validada tem prioridade nas próximas aberturas, sem repetir a migração.
-- Quantidades, instituições e códigos desconhecidos ficam não informados. Complete a quantidade inicial em **Editar ativo** antes de registrar operações por unidades; ou, para renda fixa sem operações de capital, escolha explicitamente o controle por valor, sem fabricar unidades. O preço médio é calculado a partir do custo preservado.
-- O histórico inicia com o patrimônio observado na data de migração, sem inventar datas de compras ou valorizações anteriores.
-- Dados inválidos não são substituídos silenciosamente por demonstração. A gravação é bloqueada, o original é mantido e o aviso permite exportar uma cópia JSON com os registros brutos para recuperação.
-- Falhas de gravação mantêm as alterações em memória e exibem aviso com exportação de cópia. O formato anterior permanece intacto se a migração não puder ser salva.
+### Registros anteriores preservados
 
-Não há sincronização ou restauração de backup pela interface nesta versão. Para recuperação, guarde o JSON exportado antes de corrigir dados via ferramentas de desenvolvimento. Para restaurar a demonstração, remova **as duas chaves** no armazenamento local e recarregue; isso apaga suas alterações. Não limpe as chaves durante uma migração normal.
+A experiência usa uma nova chave, `eleva-experiencia-v1`, com um envelope versionado que contém as carteiras `personal` e `demo`, o modo ativo, a preferência do guia em cada espaço e cópias de segurança anteriores a restaurações. Cada carteira mantém o formato financeiro `schemaVersion: 2`.
+
+- `eleva-financas-v1` e `eleva-financas-v2` continuam **intactas**: o aplicativo não as apaga nem regrava.
+- Sem a chave nova, lê a v2 se existir; caso contrário, migra a v1 e conserva IDs, posições, lançamentos, metas e saldos. Uma cópia integral passa a ser a carteira pessoal; a demonstração separada só é criada quando escolhida.
+- A origem de registros antigos pode ser desconhecida: eles podem incluir exemplos das primeiras versões. Nenhum item é filtrado, removido, classificado ou transferido automaticamente. Um aviso pede revisão antes de usar os totais. Isso evita apagar dados legítimos editados a partir de exemplos.
+- Quantidades, códigos e instituições desconhecidos não são inventados. Complete a quantidade para usar unidades ou, antes de operações de capital, escolha explicitamente o controle por valor quando adequado.
+- Dados inválidos bloqueiam gravações normais em vez de serem substituídos por exemplos. A exportação continua disponível e uma restauração validada e confirmada pode recuperar o espaço, guardando também os dados brutos anteriores.
+- Cada gravação do envelope é uma única chamada a `localStorage.setItem`; as chaves históricas não participam da escrita. Se faltar espaço ou permissão, a alteração não é confirmada e os registros anteriores permanecem salvos.
+- Uma verificação da versão lida bloqueia gravações quando outra aba já alterou o armazenamento. Nesse caso, o aviso pede recarregar antes de salvar; a exportação inclui o estado persistido mais recente.
+
+### Exportar e restaurar
+
+**Exportar backup JSON** está disponível nas telas, inclusive antes da escolha inicial. O arquivo contém os dois espaços disponíveis, preferências, cópias anteriores a restaurações e os registros brutos das chaves atuais e antigas. O arquivo é baixado localmente; não é enviado a um servidor. Proteja-o, pois contém informações financeiras.
+
+**Restaurar backup** aceita arquivos JSON de até 10 MB:
+
+1. Selecione o arquivo. A estrutura, versão, IDs, referências, datas e consistência dos cálculos são validadas antes de qualquer alteração.
+2. Confira o espaço, as quantidades de registros e o patrimônio da prévia. Se o backup tiver os dois modos, selecione qual deseja restaurar.
+3. Leia o aviso de substituição. Você pode exportar um backup adicional antes de continuar.
+4. Marque a confirmação e clique em **Confirmar restauração**. Selecionar um arquivo ou cancelar não muda dados.
+
+A restauração substitui somente a carteira escolhida, sem mesclar registros ou duplicar IDs. **Demonstração restaura em demonstração; pessoal restaura em pessoal.** O outro espaço permanece intacto. A carteira substituída é adicionada às cópias recuperáveis, sem remover cópias anteriores. Ao exportar um novo backup e importá-lo, o campo **Versão da carteira** permite escolher uma cópia anterior à restauração.
+
+Backups das versões v1, v2 e exportações antigas com `memory` também são aceitos. Como não tinham distinção de modos, são apresentados como registros pessoais anteriores, com aviso sobre possíveis exemplos históricos. Nenhuma tentativa é feita de adivinhar a origem ou descartar registros.
+
+Não há botão de reinicialização automática. Exclusões individuais mantêm aviso e confirmação; cancelar não altera a carteira. Não limpe o `localStorage` como forma de alternar modos: use o seletor e os backups validados.
 
 ## Testar
 
@@ -116,7 +147,7 @@ npm test
 npm run build
 ```
 
-Os 48 testes unitários cobrem exemplos de todos os tipos, preparação/edição do rascunho, controle por valor, resgates com capital separado do caixa, duplicidade semântica e por referência, compatibilidade de registros anteriores, projeções, preço médio, compras, vendas, aportes, resgates, liquidação fracionária, proventos, reinvestimento sem dupla contagem, perdas, posição zero, datas, migração, integridade e falhas de armazenamento. O build verifica os tipos com TypeScript estrito e gera `dist/`.
+Os 70 testes unitários cobrem primeiro acesso, persistência por modo, preservação de v1/v2, restauração e cópias anteriores, concorrência e falhas de armazenamento, além de exemplos de todos os tipos, preparação/edição do rascunho, controle por valor, resgates com capital separado do caixa, duplicidade semântica e por referência, compatibilidade de registros anteriores, projeções, preço médio, compras, vendas, aportes, resgates, liquidação fracionária, proventos, reinvestimento sem dupla contagem, perdas, posição zero, datas, migração, integridade e falhas de armazenamento. O build verifica os tipos com TypeScript estrito e gera `dist/`.
 
 Testes de interface reproduzíveis com Playwright:
 
@@ -131,20 +162,22 @@ O runner sobe o Vite na porta 5174 e executa cenários em desktop (1440 px) e ce
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=2
 ```
 
-Os 14 cenários de interface cobrem o assistente guiado, modo rápido, ajuda por campo, exemplo preenchido, revisão, CDB sem quantidade, resgate por valor, troca de modo sem perda, duplicidade e edição de dados anteriores, além de: migração e persistência, Dashboard e metas preservados, novo lançamento, cadastro/edição de ativo, bloqueio de venda excessiva, operações e reinvestimento, filtro de proventos, histórico manual, educação, simulador, menu móvel, ausência de transbordamento horizontal e exportação de dados corrompidos. Capturas de desktop e celular ficam em `test-results/`, diretório ignorado pelo Git.
+Os 34 cenários de interface cobrem escolha inicial, guia reutilizável, estado vazio, confirmação com nome, alternância e consistência entre áreas, backup JSON, restauração confirmada/cancelada/inválida, recuperação após corrupção, bloqueio de sobrescrita por outra aba, exclusão confirmada, falha de gravação e nova tentativa sem duplicidade, além de o assistente guiado, modo rápido, ajuda por campo, exemplo preenchido, revisão, CDB sem quantidade, resgate por valor, troca de modo sem perda, duplicidade e edição de dados anteriores, além de: migração e persistência, Dashboard e metas preservados, novo lançamento, cadastro/edição de ativo, bloqueio de venda excessiva, operações e reinvestimento, filtro de proventos, histórico manual, educação, simulador, menu móvel, ausência de transbordamento horizontal e exportação de dados corrompidos. Capturas de desktop e celular ficam em `test-results/`, diretório ignorado pelo Git.
 
 ## Estrutura
 
 ```text
 src/
   components/ui.tsx              # Componentes compartilhados
-  components/investments/        # Formulários, gráficos, histórico e educação
+  components/investments/        # Formulários, guia, gráficos, histórico e educação
+  components/experience/         # Primeiro acesso, exportação e restauração
   hooks/useFinances.ts           # Estado, gravação e aviso/exportação de backup
   lib/demo.ts                   # Dados fictícios originais
   lib/format.ts                 # Moeda, porcentagens e datas
   lib/assetDraft.mjs             # Validação única dos dois modos de cadastro
   lib/investmentCatalog.mjs      # Tipos, explicações e exemplos fictícios
   lib/investments.mjs            # Contabilidade, validação e migração puras
+  lib/experience.mjs             # Separação de modos, preservação e backup validado
   lib/storage.mjs                # Leitura segura e persistência versionada
   lib/projection.mjs             # Cálculo de projeção patrimonial
   pages/                        # As cinco áreas do aplicativo

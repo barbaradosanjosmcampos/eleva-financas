@@ -19,7 +19,7 @@ export default function OperationForm({
 }: {
   data: FinanceData;
   incomeOnly: boolean;
-  onSave: (d: FinanceData) => void;
+  onSave: (d: FinanceData) => boolean;
   onClose: () => void;
 }) {
   const [assetId, setAssetId] = useState(data.assets[0]?.id ?? "");
@@ -76,7 +76,13 @@ export default function OperationForm({
         },
         today(),
       );
-      onSave(next);
+      if (!onSave(next)) {
+        submitting.current = false;
+        setError(
+          "A operação não foi salva. Confira o aviso da página e tente novamente.",
+        );
+        return;
+      }
       onClose();
     } catch (error) {
       submitting.current = false;

@@ -12,10 +12,16 @@ import { Info, TrendingUp } from "lucide-react";
 import { Field } from "../components/ui";
 import { money } from "../lib/format";
 import { project } from "../lib/projection.mjs";
-export default function Simulator() {
+export default function Simulator({
+  portfolioValue,
+  mode,
+}: {
+  portfolioValue: number;
+  mode: "personal" | "demo";
+}) {
   const [params, setParams] = useState({
-    initial: 10000,
-    monthly: 500,
+    initial: portfolioValue,
+    monthly: mode === "demo" ? 500 : 0,
     rate: 8,
     years: 10,
   });
@@ -46,6 +52,12 @@ export default function Simulator() {
           </p>
         </div>
       </div>
+      <p className="simulation-source">
+        Valor inicial preenchido com {money(portfolioValue)} da{" "}
+        {mode === "demo" ? "demonstração" : "sua carteira pessoal"}. Você pode
+        alterá-lo para explorar hipóteses; a simulação não modifica sua
+        carteira.
+      </p>
       <div className="simulator-grid">
         <section className="panel simulation-form">
           <div className="panel-heading">
@@ -60,7 +72,7 @@ export default function Simulator() {
                 min="0"
                 max="1000000000"
                 step="0.01"
-                defaultValue="10000"
+                defaultValue={portfolioValue}
                 required
               />
             </Field>
@@ -71,7 +83,7 @@ export default function Simulator() {
                 min="0"
                 max="1000000"
                 step="0.01"
-                defaultValue="500"
+                defaultValue={mode === "demo" ? 500 : 0}
                 required
               />
             </Field>

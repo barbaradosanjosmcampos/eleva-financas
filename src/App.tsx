@@ -18,6 +18,8 @@ import Transactions from "./pages/Transactions";
 import Investments from "./pages/Investments";
 import Goals from "./pages/Goals";
 import Simulator from "./pages/Simulator";
+import Welcome from "./components/experience/Welcome";
+import BackupManager from "./components/experience/BackupManager";
 const navigation = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "transactions", label: "Receitas e Despesas", icon: ArrowLeftRight },
@@ -32,7 +34,19 @@ function currentPage(): Page {
 export default function App() {
   const [page, setPage] = useState<Page>(currentPage);
   const [menu, setMenu] = useState(false);
-  const { data, update, warning, storageBlocked, exportBackup } = useFinances();
+  const {
+    data,
+    mode,
+    session,
+    update,
+    switchMode,
+    warning,
+    storageBlocked,
+    exportBackup,
+    restore,
+    guideDismissed,
+    dismissGuide,
+  } = useFinances();
   useEffect(() => {
     const handle = () => {
       setPage(currentPage());
@@ -124,21 +138,60 @@ export default function App() {
             <strong>{navigation.find((n) => n.id === page)?.label}</strong>
           </div>
           <div className="topbar-right">
-            <span className="demo-badge">
+            <span
+              className={`mode-badge ${mode === "demo" ? "is-demo" : "is-personal"}`}
+            >
               <i />
-              Modo demonstração
+              {mode === "demo"
+                ? "Demonstração · dados fictícios"
+                : mode === "personal"
+                  ? "Minha carteira"
+                  : "Bem-vindo"}
             </span>
-            <span className="avatar" title="Perfil de demonstração">
+            <span className="avatar" title="Espaço local ELEVA">
               EF
             </span>
           </div>
         </header>
         <main id="main-content">
-          <div className="demo-notice">
-            <span className="demo-dot" />
-            Ambiente local com dados fictícios iniciais. Suas alterações ficam
-            apenas neste navegador.
+          <div className="experience-controls">
+            <div>
+              {mode && (
+                <>
+                  <label htmlFor="data-mode">Seu espaço</label>
+                  <select
+                    id="data-mode"
+                    aria-label="Modo atual"
+                    value={mode}
+                    disabled={storageBlocked}
+                    onChange={(e) =>
+                      switchMode(e.target.value as "personal" | "demo")
+                    }
+                  >
+                    <option value="personal">Minha carteira</option>
+                    <option value="demo">Demonstração</option>
+                  </select>
+                </>
+              )}
+            </div>
+            <BackupManager exportBackup={exportBackup} onRestore={restore} />
           </div>
+          {mode && (
+            <div className={`mode-notice ${mode}`}>
+              <span className="demo-dot" />
+              {mode === "demo"
+                ? "Você está em uma demonstração com dados fictícios. As alterações aqui não afetam sua carteira pessoal."
+                : "Esta é sua carteira pessoal. Os dados ficam neste navegador e são separados da demonstração."}
+            </div>
+          )}
+          {mode === "personal" && session.legacyImported && (
+            <div className="legacy-notice">
+              Registros anteriores preservados por inteiro. Como não é possível
+              reconhecer exemplos antigos com segurança, nenhum registro foi
+              removido ou separado automaticamente. Revise-os antes de usar os
+              totais.
+            </div>
+          )}
           {warning && (
             <div role="alert" className="notice storage-warning">
               {warning}
@@ -147,19 +200,49 @@ export default function App() {
               </button>
             </div>
           )}
-          <fieldset className="app-content" disabled={storageBlocked}>
-            {page === "dashboard" && (
-              <Dashboard data={data} navigate={navigate} />
-            )}{" "}
-            {page === "transactions" && (
-              <Transactions data={data} update={update} />
-            )}{" "}
-            {page === "investments" && (
-              <Investments data={data} update={update} navigate={navigate} />
-            )}{" "}
-            {page === "goals" && <Goals data={data} update={update} />}{" "}
-            {page === "simulator" && <Simulator />}
-          </fieldset>
+          {mode === null ? (
+            <Welcome
+              onChoose={(selected) => {
+                if (switchMode(selected))
+                  navigate(
+                    selected === "personal" ? "investments" : "dashboard",
+                  );
+              }}
+            />
+          ) : (
+            <fieldset
+              key={mode}
+              className="app-content"
+              disabled={storageBlocked}
+            >
+              {page === "dashboard" && (
+                <Dashboard data={data} navigate={navigate} />
+              )}{" "}
+              {page === "transactions" && (
+                <Transactions data={data} update={update} />
+              )}{" "}
+              {page === "investments" && (
+                <Investments
+                  data={data}
+                  update={update}
+                  navigate={navigate}
+                  mode={mode}
+                  guideDismissed={guideDismissed}
+                  onGuideDismiss={dismissGuide}
+                />
+              )}{" "}
+              {page === "goals" && <Goals data={data} update={update} />}{" "}
+              {page === "simulator" && (
+                <Simulator
+                  portfolioValue={data.assets.reduce(
+                    (sum, a) => sum + a.current,
+                    0,
+                  )}
+                  mode={mode}
+                />
+              )}
+            </fieldset>
+          )}
           <footer>
             <span>
               ELEVA <span className="gold">·</span> Finanças com propósito.
