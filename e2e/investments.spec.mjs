@@ -66,7 +66,9 @@ async function completeQuantity(page) {
   await page
     .getByLabel("Quantidade inicial (não informada na v1)", { exact: true })
     .fill("10");
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
 }
 async function trade(page, type, amount, quantity, current) {
   await page
@@ -106,7 +108,9 @@ test("migra v1, preserva Dashboard e metas, mantém uma única observação inic
     page.getByRole("heading", { name: "Seu patrimônio, em perspectiva." }),
   ).toBeVisible();
   const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)),
+    (key) =>
+      JSON.parse(localStorage.getItem("eleva-experiencia-v1"))?.personal ??
+      JSON.parse(localStorage.getItem(key)),
     key,
   );
   expect(stored.schemaVersion).toBe(2);
@@ -121,7 +125,11 @@ test("migra v1, preserva Dashboard e metas, mantém uma única observação inic
   await page.reload();
   expect(
     await page.evaluate(
-      (k) => JSON.parse(localStorage.getItem(k)).snapshots.length,
+      (k) =>
+        (
+          JSON.parse(localStorage.getItem("eleva-experiencia-v1"))?.personal ??
+          JSON.parse(localStorage.getItem(k))
+        ).snapshots.length,
       key,
     ),
   ).toBe(1);
@@ -173,7 +181,9 @@ test("operações, proventos e reinvestimento não duplicam capital ou resultado
   await trade(page, "contribution", 100, 1, 1200);
   await page.reload();
   const d = await page.evaluate(
-    (k) => JSON.parse(localStorage.getItem(k)),
+    (k) =>
+      JSON.parse(localStorage.getItem("eleva-experiencia-v1"))?.personal ??
+      JSON.parse(localStorage.getItem(k)),
     key,
   );
   expect(d.assets[0].invested).toBe(1100);
@@ -204,17 +214,19 @@ test("cadastro, validação de saídas, histórico real, educação e simulador"
   page,
 }, testInfo) => {
   await seed(page);
-  await page.getByRole("button", { name: "Novo ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Novo investimento", exact: true })
+    .click();
   await page.getByRole("button", { name: /Modo rápido/ }).click();
   await page
     .getByLabel("Tipo de investimento", { exact: true })
     .selectOption("etf");
   await page
-    .getByLabel("Nome do ativo", { exact: true })
+    .getByLabel("Nome do investimento", { exact: true })
     .fill("ETF demonstração");
   await page.getByLabel("Código (opcional)", { exact: true }).fill("DEMO11");
   await page
-    .getByLabel("Instituição", { exact: true })
+    .getByLabel("Onde está seu investimento?", { exact: true })
     .fill("Instituição fictícia");
   await page.getByLabel("Quantidade inicial", { exact: true }).fill("10");
   await page
@@ -223,13 +235,17 @@ test("cadastro, validação de saídas, histórico real, educação e simulador"
   await page
     .getByLabel("Valor atual da posição (R$)", { exact: true })
     .fill("1050");
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByRole("button", { name: "Editar ETF demonstração" }).click();
   await page
     .getByLabel("Valor atual da posição (R$)", { exact: true })
     .fill("1100");
-  await page.getByRole("button", { name: "Salvar ativo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Salvar investimento", exact: true })
+    .click();
   await completeQuantity(page);
   await trade(page, "sell", 2000, 20, 0);
   await expect(page.getByRole("alert")).toContainText("excede");
@@ -246,7 +262,9 @@ test("cadastro, validação de saídas, histórico real, educação e simulador"
     .fill("Extrato de demonstração");
   await page.getByRole("button", { name: "Salvar registro" }).click();
   const d = await page.evaluate(
-    (k) => JSON.parse(localStorage.getItem(k)),
+    (k) =>
+      JSON.parse(localStorage.getItem("eleva-experiencia-v1"))?.personal ??
+      JSON.parse(localStorage.getItem(k)),
     key,
   );
   expect(d.snapshots).toHaveLength(2);
@@ -295,7 +313,7 @@ test("armazenamento corrompido fica intacto e bloqueia gravação", async ({
     "gravação está bloqueada",
   );
   await expect(
-    page.getByRole("button", { name: "Novo ativo", exact: true }),
+    page.getByRole("button", { name: "Novo investimento", exact: true }),
   ).toBeDisabled();
   expect(await page.evaluate((k) => localStorage.getItem(k), legacyKey)).toBe(
     "{invalid",

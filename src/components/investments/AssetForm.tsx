@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Sparkles,
   ArrowRight,
@@ -49,11 +49,13 @@ export default function AssetForm({
   data,
   onSave,
   onClose,
+  dataMode,
 }: {
   asset: Asset | null;
   data: FinanceData;
-  onSave: (d: FinanceData) => void;
+  onSave: (d: FinanceData) => boolean;
   onClose: () => void;
+  dataMode: "personal" | "demo";
 }) {
   const [draft, setDraft] = useState<AssetDraft>(() => ({
     ...createAssetDraft(asset, crypto.randomUUID()),
@@ -64,8 +66,10 @@ export default function AssetForm({
   );
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
+  const [showExample, setShowExample] = useState(false);
   const [review, setReview] = useState<Asset | null>(null);
   const [saved, setSaved] = useState(false);
+  const saveLock = useRef(false);
   const guided = mode === "guided";
   const kind = draft.investmentType
     ? investmentCatalog[draft.investmentType]
@@ -130,6 +134,10 @@ export default function AssetForm({
   }
   function example() {
     if (!draft.investmentType || asset) return;
+    if (dataMode === "personal") {
+      setShowExample(!showExample);
+      return;
+    }
     const filled = [
       draft.name,
       draft.code,
@@ -159,7 +167,7 @@ export default function AssetForm({
   function nextOrSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
-    if (saved) return;
+    if (saved || saveLock.current) return;
     if (guided && step === 1) {
       if (!kind) {
         setError("Selecione o tipo de investimento para continuar.");
@@ -196,10 +204,18 @@ export default function AssetForm({
           ? "Valor atual confirmado no cadastro assistido"
           : "Posição inicial cadastrada no ELEVA Ensina",
       });
+      saveLock.current = true;
+      if (!onSave(final)) {
+        saveLock.current = false;
+        setError(
+          "O investimento não foi salvo. Confira o aviso da página e tente novamente; nenhum registro foi duplicado.",
+        );
+        return;
+      }
       setSaved(true);
-      onSave(final);
       onClose();
     } catch (e) {
+      saveLock.current = false;
       setError(
         e instanceof Error ? e.message : "Confira os dados do cadastro.",
       );
@@ -375,9 +391,49 @@ export default function AssetForm({
                 onClick={example}
               >
                 <Sparkles size={15} />
-                Preencher exemplo fictício
-                <small>Você pode editar tudo antes de salvar</small>
+                {dataMode === "demo"
+                  ? "Preencher exemplo fictício"
+                  : "Ver exemplo fictício"}
+                <small>
+                  {dataMode === "demo"
+                    ? "Você pode editar tudo antes de salvar"
+                    : "Somente leitura: não altera seus campos"}
+                </small>
               </button>
+            )}
+            {showExample && dataMode === "personal" && kind && !asset && (
+              <div className="example-readonly">
+                <strong>Exemplo fictício · {kind.label}</strong>
+                <p>
+                  Apenas para aprender. Estes números não serão copiados para
+                  seu cadastro.
+                </p>
+                <dl>
+                  <div>
+                    <dt>Nome</dt>
+                    <dd>{kind.example.name}</dd>
+                  </div>
+                  <div>
+                    <dt>Onde está</dt>
+                    <dd>{kind.example.institution}</dd>
+                  </div>
+                  <div>
+                    <dt>Capital aplicado</dt>
+                    <dd>{money(Number(kind.example.openingInvested))}</dd>
+                  </div>
+                  <div>
+                    <dt>Saldo atualizado</dt>
+                    <dd>{money(Number(kind.example.current))}</dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setShowExample(false)}
+                >
+                  Fechar exemplo
+                </button>
+              </div>
             )}
           </section>
         )}
@@ -392,7 +448,7 @@ export default function AssetForm({
               operações.
             </p>
             {field(
-              "Nome do ativo",
+              "Nome do investimento",
               "Um nome que ajude você a reconhecer este investimento. Para contratos diferentes, use nomes distintos.",
               kind?.example.name ?? "Meu investimento",
               <input
@@ -414,8 +470,8 @@ export default function AssetForm({
                 />,
               )}
               {field(
-                "Instituição",
-                "Banco ou corretora onde essa posição está registrada.",
+                "Onde está seu investimento?",
+                "Onde encontro essa informação? No nome do banco ou da corretora, no topo do extrato de investimentos.",
                 "Banco exemplo",
                 <input
                   required={!asset}
@@ -459,7 +515,7 @@ export default function AssetForm({
                 {byValue ? (
                   field(
                     "Valor aplicado inicial (R$)",
-                    "É o capital aplicado que ainda pertence à posição inicial, sem somar os rendimentos ao custo. Não precisa informar quantidade.",
+                    "Onde encontro essa informação? Procure valor aplicado ou principal no extrato. É seu capital, sem somar rendimentos ao custo. Não precisa informar quantidade.",
                     "Aplicou R$ 10.000 e o saldo foi a R$ 10.350? Aqui entram R$ 10.000.",
                     <input
                       type="number"
@@ -479,7 +535,7 @@ export default function AssetForm({
                       asset?.openingQuantity === null
                         ? "Quantidade inicial (não informada na v1)"
                         : "Quantidade inicial",
-                      "Número de cotas ou unidades da posição inicial. Para começar sem posição, use zero.",
+                      "Onde encontro essa informação? Procure quantidade ou cotas no extrato. Para começar sem posição, use zero.",
                       "10 cotas ou 100 ações.",
                       <input
                         type="number"
@@ -510,7 +566,7 @@ export default function AssetForm({
                         )
                       : field(
                           "Preço médio inicial (R$)",
-                          "Custo médio pago por cada unidade, incluindo taxas de aquisição. O capital total será calculado.",
+                          "Onde encontro essa informação? Procure preço médio na posição ou no relatório de compras, incluindo taxas. O capital total será calculado.",
                           "100 ações a R$ 20 = R$ 2.000 de capital.",
                           <input
                             type="number"
@@ -552,7 +608,7 @@ export default function AssetForm({
             )}
             {field(
               byValue ? "Saldo atualizado (R$)" : "Valor atual da posição (R$)",
-              "Informe o valor total da posição hoje, conforme seu extrato, não o preço de uma unidade. Exclua proventos pagos fora desta posição.",
+              "Onde encontro essa informação? Procure saldo atualizado ou posição atual no extrato. Use o total, não o preço de uma cota. Exclua proventos já pagos fora da posição.",
               "Capital de R$ 10.000 e saldo de R$ 10.350: valorização de R$ 350.",
               <input
                 type="number"
@@ -602,7 +658,7 @@ export default function AssetForm({
                 </dd>
               </div>
               <div>
-                <dt>Instituição</dt>
+                <dt>Onde está</dt>
                 <dd>{review.institution || "Não informada"}</dd>
               </div>
               <div>
@@ -672,7 +728,7 @@ export default function AssetForm({
                 <ArrowRight size={15} />
               </>
             ) : (
-              "Salvar ativo"
+              "Salvar investimento"
             )}
           </button>
         </div>
