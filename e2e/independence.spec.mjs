@@ -179,3 +179,42 @@ test("migração mantém registros, importação explícita é idempotente e dem
     ),
   ).toBe(1234);
 });
+
+test("educação patrimonial: conta dinâmica, teclado, retiradas e layout acessível", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explorar demonstração", exact: false }).click();
+  await navigate(page, "Independência Financeira");
+  const stored = await page.evaluate(() => localStorage.getItem("eleva-experiencia-v1"));
+  const target = page.getByRole("region", { name: "Comparação com a meta" });
+  await expect(target).toContainText("36.000,00");
+  await expect(target).toContainText("900.000,00");
+  await page.getByLabel("Renda mensal desejada em valores de hoje (R$)", { exact: true }).fill("5000");
+  await expect(target).toContainText("60.000,00");
+  await expect(target).toContainText("1.500.000,00");
+  await page.getByLabel("Taxa de retirada anual hipotética (%)", { exact: true }).fill("3");
+  await expect(target).toContainText("2.000.000,00");
+  await expect(target).toContainText("Ambos em reais de hoje");
+  await expect(target.getByLabel("Aviso sobre a taxa de retirada")).toContainText("O patrimônio pode se esgotar.");
+  const education = page.getByRole("region", { name: "ELEVA Ensina — Entenda seu patrimônio" });
+  await education.scrollIntoViewIfNeeded();
+  const summary = education.getByText("Entenda melhor: renda gerada pelo patrimônio", { exact: true });
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(education.getByText(/Uma valorização de R\$ 500/)).toBeVisible();
+  await expect(education.locator(".wealth-ledger")).toContainText("97.000,00");
+  await education.getByLabel("Retirada fictícia (R$)").fill("5000");
+  await expect(education.locator(".wealth-ledger").locator("div").last()).toContainText("100.000,00");
+  await education.getByLabel("Rendimento anual fictício (%)").fill("-10");
+  await expect(education.locator(".wealth-ledger").locator("div").last()).toContainText("85.000,00");
+  await education.getByLabel("Retirada fictícia (R$)").fill("1000000");
+  await expect(education.getByRole("alert")).toContainText("não pode superar");
+  await expect(education.locator(".wealth-ledger")).toHaveCount(0);
+  await education.getByLabel("Retirada fictícia (R$)").fill("8000");
+  await education.getByLabel("Rendimento anual fictício (%)").fill("5");
+  await education.getByText("Como evitamos contar duas vezes?", { exact: true }).click();
+  await expect(education.getByText(/Não somamos esse pagamento de novo/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (const input of await education.getByRole("spinbutton").all()) await expect(input).toHaveAccessibleName(/fictíci/);
+  expect(await page.evaluate(() => localStorage.getItem("eleva-experiencia-v1"))).toBe(stored);
+  await page.screenshot({ path: testInfo.outputPath("educacao-patrimonial.png"), fullPage: true });
+});

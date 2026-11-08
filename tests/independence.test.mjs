@@ -94,3 +94,30 @@ test("rejeita entradas ausentes, não finitas, fora dos limites e prazos fracion
     for (const value of values)
       assert.throws(() => plan({ ...base, [key]: value }));
 });
+
+test("meta responde à renda e à retirada; retorno e inflação mudam apenas a projeção", () => {
+  assert.equal(plan(base).annualIncome, 36000);
+  assert.equal(plan({ ...base, income: 6000 }).target, 1800000);
+  assert.equal(plan({ ...base, withdrawal: 2 }).target, 1800000);
+  assert.equal(plan({ ...base, withdrawal: 8 }).target, 450000);
+  for (const change of [{ rate: 10 }, { inflation: 8 }, { years: 30 }, { monthly: 800 }]) {
+    const changed = plan({ ...base, ...change });
+    assert.equal(changed.target, plan(base).target);
+    assert.notEqual(changed.last.real, plan(base).last.real);
+    close(changed.gap, changed.last.real - changed.target);
+  }
+  for (const withdrawal of [NaN, Infinity, -Infinity, undefined, 0.09, 20.01])
+    assert.throws(() => plan({ ...base, withdrawal }), /Taxa de retirada/);
+});
+
+test("rendimentos e retiradas separados, sem dupla contagem e com perdas", async () => {
+  const { wealthExample } = await import("../src/lib/independence.mjs");
+  assert.deepEqual(wealthExample(100000, 5, 8000), { initial: 100000, earnings: 5000, withdrawal: 8000, final: 97000 });
+  assert.equal(wealthExample(100000, 5, 0).final, 105000);
+  assert.equal(wealthExample(100000, 5, 5000).final, 100000);
+  assert.equal(wealthExample(100000, -10, 8000).final, 82000);
+  assert.equal(wealthExample(100000, -100, 0).final, 0);
+  assert.equal(wealthExample(0, 0, 0).final, 0);
+  for (const args of [[100, 0, 101], [-1, 5, 0], [100, NaN, 0], [100, 5, -1], [100, -101, 0]])
+    assert.throws(() => wealthExample(...args));
+});
