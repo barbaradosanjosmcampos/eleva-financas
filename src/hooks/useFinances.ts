@@ -1,70 +1,79 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FinanceData } from "../types";
 import { createDemo } from "../lib/demo";
-const KEY = "eleva-financas-v1";
-function valid(data: unknown): data is FinanceData {
-  if (!data || typeof data !== "object") return false;
-  const d = data as FinanceData;
-  return (
-    Array.isArray(d.transactions) &&
-    Array.isArray(d.assets) &&
-    Array.isArray(d.goals) &&
-    d.transactions.every(
-      (t) =>
-        typeof t.id === "string" &&
-        typeof t.description === "string" &&
-        typeof t.category === "string" &&
-        /^\d{4}-\d{2}-\d{2}$/.test(t.date) &&
-        ["income", "expense"].includes(t.type) &&
-        Number.isFinite(t.amount) &&
-        t.amount > 0,
-    ) &&
-    d.assets.every(
-      (a) =>
-        typeof a.id === "string" &&
-        typeof a.name === "string" &&
-        typeof a.category === "string" &&
-        Number.isFinite(a.invested) &&
-        a.invested > 0 &&
-        Number.isFinite(a.current) &&
-        a.current >= 0,
-    ) &&
-    d.goals.every(
-      (g) =>
-        typeof g.id === "string" &&
-        typeof g.name === "string" &&
-        /^\d{4}-\d{2}-\d{2}$/.test(g.deadline) &&
-        Number.isFinite(g.target) &&
-        g.target > 0 &&
-        Number.isFinite(g.saved) &&
-        g.saved >= 0,
-    )
-  );
-}
+import { validateV2 } from "../lib/investments.mjs";
+import { today } from "../lib/format";
+import { loadFinances, persistFinances } from "../lib/storage.mjs";
 export function useFinances() {
-  const [warning, setWarning] = useState("");
-  const [data, setData] = useState<FinanceData>(() => {
+  const [initial] = useState(() =>
+    loadFinances(
+      {
+        getItem: (key) => localStorage.getItem(key),
+        setItem: (key, value) => localStorage.setItem(key, value),
+      },
+      createDemo,
+      today(),
+    ),
+  );
+  const [warning, setWarning] = useState(initial.warning);
+  const [data, setData] = useState<FinanceData>(initial.data);
+  const [storageBlocked] = useState(!initial.writable);
+  useEffect(() => {
+    if (!initial.needsSave) return;
     try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (valid(parsed)) return parsed;
-      }
+      persistFinances(localStorage, initial.data);
     } catch {
-      /* Fall back to demo; saving reports storage problems. */
+      setWarning(
+        "A migração está em memória, mas não foi possível salvá-la. O formato anterior permanece intacto. Novas alterações podem ser perdidas ao fechar a página.",
+      );
     }
-    return createDemo();
-  });
+  }, [initial]);
   const update = (next: FinanceData) => {
+    if (storageBlocked) return;
+    if (!validateV2(next)) {
+      setWarning(
+        "A alteração não passou pela validação de integridade. Seus registros anteriores foram preservados.",
+      );
+      return;
+    }
     setData(next);
     try {
-      localStorage.setItem(KEY, JSON.stringify(next));
+      persistFinances(localStorage, next);
       setWarning("");
     } catch {
       setWarning(
-        "Não foi possível salvar neste navegador. As alterações serão mantidas somente enquanto esta página estiver aberta.",
+        "Não foi possível salvar neste navegador. As alterações estão apenas em memória. Exporte uma cópia antes de fechar a página.",
       );
     }
   };
-  return { data, update, warning };
+  function exportBackup() {
+    // Include raw stored data to make recovery possible even for an invalid schema.
+    let raw: Record<string, string | null> = {};
+    try {
+      raw = {
+        "eleva-financas-v1": localStorage.getItem("eleva-financas-v1"),
+        "eleva-financas-v2": localStorage.getItem("eleva-financas-v2"),
+      };
+    } catch {
+      /* Memory copy still available. */
+    }
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          JSON.stringify(
+            { exportedAt: new Date().toISOString(), memory: data, stored: raw },
+            null,
+            2,
+          ),
+        ],
+        { type: "application/json" },
+      ),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `eleva-backup-${today()}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  return { data, update, warning, storageBlocked, exportBackup };
 }

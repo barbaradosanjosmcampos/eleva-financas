@@ -1,7 +1,7 @@
-import type { FinanceData } from "../types";
+import type { LegacyFinanceData } from "../types";
 import { monthKey } from "./format";
-export function createDemo(): FinanceData {
-  const transactions: FinanceData["transactions"] = [];
+export function createDemo(): LegacyFinanceData {
+  const transactions: LegacyFinanceData["transactions"] = [];
   for (let offset = 5; offset >= 0; offset--) {
     const d = new Date();
     d.setDate(1);

@@ -32,7 +32,7 @@ function currentPage(): Page {
 export default function App() {
   const [page, setPage] = useState<Page>(currentPage);
   const [menu, setMenu] = useState(false);
-  const { data, update, warning } = useFinances();
+  const { data, update, warning, storageBlocked, exportBackup } = useFinances();
   useEffect(() => {
     const handle = () => {
       setPage(currentPage());
@@ -106,7 +106,7 @@ export default function App() {
             <ShieldCheck size={17} />
             <span>Seus dados, no seu navegador</span>
           </div>
-          <span className="version">ELEVA FINANÇAS · VERSÃO 1.0</span>
+          <span className="version">ELEVA FINANÇAS · VERSÃO 2.0</span>
         </div>
       </aside>
       <div className="main-shell">
@@ -142,19 +142,24 @@ export default function App() {
           {warning && (
             <div role="alert" className="notice storage-warning">
               {warning}
+              <button className="secondary" onClick={exportBackup}>
+                Exportar cópia dos dados
+              </button>
             </div>
           )}
-          {page === "dashboard" && (
-            <Dashboard data={data} navigate={navigate} />
-          )}{" "}
-          {page === "transactions" && (
-            <Transactions data={data} update={update} />
-          )}{" "}
-          {page === "investments" && (
-            <Investments data={data} update={update} />
-          )}{" "}
-          {page === "goals" && <Goals data={data} update={update} />}{" "}
-          {page === "simulator" && <Simulator />}
+          <fieldset className="app-content" disabled={storageBlocked}>
+            {page === "dashboard" && (
+              <Dashboard data={data} navigate={navigate} />
+            )}{" "}
+            {page === "transactions" && (
+              <Transactions data={data} update={update} />
+            )}{" "}
+            {page === "investments" && (
+              <Investments data={data} update={update} navigate={navigate} />
+            )}{" "}
+            {page === "goals" && <Goals data={data} update={update} />}{" "}
+            {page === "simulator" && <Simulator />}
+          </fieldset>
           <footer>
             <span>
               ELEVA <span className="gold">·</span> Finanças com propósito.
