@@ -41,7 +41,13 @@ export type InvestmentType =
   | "etf"
   | "fii"
   | "other";
+export type Remuneration =
+  | { version: 1; mode: "cdi" | "fixed" | "ipca"; rate: number }
+  | { version: 1; mode: "other"; description: string };
 export type Asset = LegacyAsset & {
+  remuneration?: Remuneration;
+  valuationDate?: string;
+  applicationDate?: string;
   trackingMode?: TrackingMode;
   investmentType?: InvestmentType;
   code: string;

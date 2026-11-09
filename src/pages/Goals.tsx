@@ -8,10 +8,10 @@ export default function Goals({
   update,
 }: {
   data: FinanceData;
-  update: (d: FinanceData) => boolean;
+  update: (d: FinanceData) => boolean | Promise<boolean>;
 }) {
   const [editing, setEditing] = useState<Goal | null>();
-  function save(e: React.FormEvent<HTMLFormElement>) {
+  async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const g: Goal = {
@@ -29,7 +29,7 @@ export default function Goals({
       g.saved < 0
     )
       return;
-    const saved = update({
+    const saved = await update({
       ...data,
       goals: editing
         ? data.goals.map((x) => (x.id === g.id ? g : x))

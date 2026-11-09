@@ -9,15 +9,19 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "playwright test",
-    "test:pwa": "npm run build && playwright test --config playwright.pwa.config.mjs"
+    "test:pwa": "npm run build && playwright test --config playwright.pwa.config.mjs",
+    "test:accounts": "playwright test --config playwright.accounts.config.mjs",
+    "test:supabase": "node --test integration-tests/*.test.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.4.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
     "@playwright/test": "^1.65.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

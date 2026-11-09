@@ -5,6 +5,11 @@ import type {
   TrackingMode,
 } from "../types";
 export type AssetDraft = {
+  remunerationMode: string;
+  contractedRate: string;
+  remunerationDescription: string;
+  valuationDate: string;
+  applicationDate: string;
   id: string;
   investmentType: InvestmentType | "";
   trackingMode: TrackingMode;

@@ -286,3 +286,131 @@ test("edição de v2 com operações mantém custo e histórico e bloqueia conve
   expect(d.assets[0].current).toBe(1700);
   expect(d.operations).toEqual([operation]);
 });
+
+async function newValuePosition(page, type = "fixed-income") {
+  await seed(page);
+  await page.getByRole("button", { name: "Novo investimento", exact: true }).click();
+  await page.getByRole("button", { name: /Modo rápido/ }).click();
+  await page.getByLabel("Tipo de investimento", { exact: true }).selectOption(type);
+  await page.getByLabel("Forma de controle", { exact: true }).selectOption("value");
+  await fill(page, "Nome do investimento", "Reserva de teste");
+  await fill(page, "Onde está seu investimento?", "Banco teste");
+}
+const saveAsset = (page) => page.getByRole("button", { name: "Salvar investimento", exact: true }).click();
+
+test("saldo sugerido acompanha o capital somente até a edição manual, inclusive ao limpar", async ({ page }) => {
+  await newValuePosition(page);
+  const current = page.getByLabel("Saldo atualizado (R$)", { exact: true });
+  await fill(page, "Valor aplicado inicial (R$)", 1000);
+  await expect(current).toHaveValue("1000");
+  await fill(page, "Valor aplicado inicial (R$)", 2000);
+  await expect(current).toHaveValue("2000");
+  await current.fill("2500");
+  await fill(page, "Valor aplicado inicial (R$)", 2100);
+  await expect(current).toHaveValue("2500");
+  await current.fill("");
+  await fill(page, "Valor aplicado inicial (R$)", 2200);
+  await expect(current).toHaveValue("");
+  await saveAsset(page);
+  await expect(page.getByRole("alert")).toContainText("Preencha o saldo");
+  await current.fill("0");
+  await fill(page, "Valor aplicado inicial (R$)", 2300);
+  await expect(current).toHaveValue("0");
+  expect((await stored(page)).assets).toHaveLength(0);
+});
+
+for (const type of ["fixed-income", "treasury"]) {
+  test(`${type}: salva saldo sugerido e preserva saldo existente ao editar capital e reabrir`, async ({ page }) => {
+    await newValuePosition(page, type);
+    await fill(page, "Valor aplicado inicial (R$)", 1000);
+    await saveAsset(page);
+    expect((await stored(page)).assets[0].current).toBe(1000);
+    await page.reload();
+    await page.getByRole("button", { name: "Editar Reserva de teste" }).click();
+    await expect(page.getByLabel("Saldo atualizado (R$)", { exact: true })).toHaveValue("1000");
+    await fill(page, "Valor aplicado inicial (R$)", 900);
+    await expect(page.getByLabel("Saldo atualizado (R$)", { exact: true })).toHaveValue("1000");
+    await saveAsset(page);
+    await page.reload();
+    expect((await stored(page)).assets[0]).toMatchObject({ openingInvested: 900, current: 1000 });
+  });
+}
+
+for (const balance of [800, 0]) {
+  test(`perda com saldo ${balance}: cancelar preserva tudo; confirmar salva e mantém saldo na edição`, async ({ page }) => {
+    await newValuePosition(page);
+    await fill(page, "Valor aplicado inicial (R$)", 1000);
+    await fill(page, "Saldo atualizado (R$)", balance);
+    // The same confirmation must run only at the final save in guided mode.
+    await page.getByRole("button", { name: /Modo guiado/ }).click();
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+    await page.getByRole("button", { name: "Revisar cadastro", exact: true }).click();
+    const before = await stored(page);
+    const cancelled = page.waitForEvent("dialog");
+    const saving = saveAsset(page);
+    const dialog = await cancelled;
+    expect(dialog.type()).toBe("confirm");
+    expect(dialog.message().replaceAll("\u00a0", " ")).toContain(`Perda: R$ ${balance === 0 ? "1.000,00 (100%)" : "200,00 (20%)"}`);
+    if (balance === 0) expect(dialog.message()).toContain("saldo atual é zero");
+    await dialog.dismiss();
+    await saving;
+    expect(await stored(page)).toEqual(before);
+    await expect(page.getByRole("dialog")).toBeVisible();
+    page.once("dialog", (d) => d.accept());
+    await saveAsset(page);
+    const saved = await stored(page);
+    expect(saved.assets[0]).toMatchObject({ current: balance, openingInvested: 1000 });
+    expect(saved.operations).toHaveLength(0);
+    expect(saved.snapshots).toHaveLength(1);
+    await page.reload();
+    await page.getByRole("button", { name: "Editar Reserva de teste" }).click();
+    await expect(page.getByLabel("Saldo atualizado (R$)", { exact: true })).toHaveValue(String(balance));
+    await fill(page, "Nome do investimento", "Reserva renomeada");
+    const editing = page.waitForEvent("dialog");
+    const editingSave = saveAsset(page);
+    await (await editing).dismiss();
+    await editingSave;
+    expect(await stored(page)).toEqual(saved);
+    page.once("dialog", (d) => d.accept());
+    await saveAsset(page);
+    await page.reload();
+    expect((await stored(page)).assets[0]).toMatchObject({ name: "Reserva renomeada", current: balance });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
+test("saldo negativo e frações de centavos são bloqueados antes da confirmação", async ({ page }) => {
+  await newValuePosition(page);
+  await fill(page, "Valor aplicado inicial (R$)", 1000);
+  for (const value of ["-1", "0.001"]) {
+    await fill(page, "Saldo atualizado (R$)", value);
+    await saveAsset(page);
+    await expect(page.getByRole("alert")).toBeVisible();
+    expect((await stored(page)).assets).toHaveLength(0);
+  }
+});
+
+test("confirmação compara saldo com capital remanescente após resgate, sem confundir retirada com perda", async ({ page }) => {
+  await seed(page, {
+    ...empty(),
+    assets: [{ id: "remaining", name: "CDB com resgate", code: "", institution: "Banco teste", category: "Renda fixa", investmentType: "fixed-income", trackingMode: "value", openingDate: day(), openingQuantity: null, openingInvested: 1000, invested: 500, current: 600 }],
+    operations: [{ id: "redemption", assetId: "remaining", type: "redemption", incomeType: null, date: day(), amount: 500, redeemedPrincipal: 500, quantity: null, currentAfter: 600, note: "" }],
+  });
+  await page.getByRole("button", { name: "Editar CDB com resgate" }).click();
+  await fill(page, "Saldo atualizado (R$)", 550);
+  // No loss relative to the remaining 500; an unexpected dialog is dismissed by Playwright.
+  await saveAsset(page);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect((await stored(page)).assets[0].current).toBe(550);
+  await page.getByRole("button", { name: "Editar CDB com resgate" }).click();
+  await fill(page, "Saldo atualizado (R$)", 400);
+  const confirmation = page.waitForEvent("dialog");
+  const saving = saveAsset(page);
+  const dialog = await confirmation;
+  expect(dialog.message().replaceAll("\u00a0", " ")).toContain("Perda: R$ 100,00 (20%)");
+  await dialog.accept();
+  await saving;
+  const data = await stored(page);
+  expect(data.assets[0]).toMatchObject({ openingInvested: 1000, invested: 500, current: 400 });
+  expect(data.operations).toHaveLength(1);
+});

@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Modal } from "../ui";
 import TeachingField from "./TeachingField";
+import ContractFields from "./ContractFields";
+import { supportsRates, contractLabel } from "../../lib/investmentRates.mjs";
 import type {
   Asset,
   FinanceData,
@@ -53,13 +55,14 @@ export default function AssetForm({
 }: {
   asset: Asset | null;
   data: FinanceData;
-  onSave: (d: FinanceData) => boolean;
+  onSave: (d: FinanceData) => boolean | Promise<boolean>;
   onClose: () => void;
   dataMode: "personal" | "demo";
 }) {
   const [draft, setDraft] = useState<AssetDraft>(() => ({
     ...createAssetDraft(asset, crypto.randomUUID()),
     openingDate: asset?.openingDate ?? today(),
+    valuationDate: asset?.valuationDate ?? (asset ? "" : today()),
   }));
   const [mode, setMode] = useState<"guided" | "quick">(
     asset ? "quick" : "guided",
@@ -70,6 +73,8 @@ export default function AssetForm({
   const [review, setReview] = useState<Asset | null>(null);
   const [saved, setSaved] = useState(false);
   const saveLock = useRef(false);
+  // Editing (including clearing) the balance opts out for this entire draft.
+  const currentEdited = useRef(false);
   const guided = mode === "guided";
   const kind = draft.investmentType
     ? investmentCatalog[draft.investmentType]
@@ -80,7 +85,17 @@ export default function AssetForm({
     data.operations.some((o) => o.assetId === asset.id && o.type !== "income");
   const p = asset ? position(asset, data.operations) : null;
   const change = (key: keyof AssetDraft, value: string) => {
-    setDraft((d) => ({ ...d, [key]: value }));
+    if (key === "current") currentEdited.current = true;
+    setDraft((d) => ({
+      ...d,
+      [key]: value,
+      ...(!asset &&
+      d.trackingMode === "value" &&
+      key === "openingInvested" &&
+      !currentEdited.current
+        ? { current: value }
+        : {}),
+    }));
     setError("");
     setReview(null);
   };
@@ -155,6 +170,7 @@ export default function AssetForm({
     )
       return;
     const sample = investmentCatalog[draft.investmentType].example;
+    currentEdited.current = true;
     setDraft((d) => ({
       ...d,
       ...sample,
@@ -164,7 +180,7 @@ export default function AssetForm({
     setError("");
     setReview(null);
   }
-  function nextOrSave(e: React.FormEvent<HTMLFormElement>) {
+  async function nextOrSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     if (saved || saveLock.current) return;
@@ -189,6 +205,23 @@ export default function AssetForm({
         setStep(3);
         return;
       }
+      const basis = position(prepared, data.operations).basis;
+      if (prepared.current < basis) {
+        const loss = basis - prepared.current;
+        const percentage = new Intl.NumberFormat("pt-BR", {
+          maximumFractionDigits: 2,
+        }).format((loss / basis) * 100);
+        const warning =
+          prepared.current === 0
+            ? "O saldo atual é zero. Isso representa uma perda de 100% do capital aplicado."
+            : "O saldo atual é menor que o capital aplicado. Perdas reais são possíveis.";
+        if (
+          !window.confirm(
+            `${warning}\nCapital aplicado remanescente: ${money(basis)}.\nSaldo atual: ${money(prepared.current)}.\nPerda: ${money(loss)} (${percentage}%).\n\nConfirma que deseja salvar este saldo${prepared.current === 0 ? " zero e registrar a perda de 100%" : " com perda"}? Cancelar mantém o formulário sem salvar.`,
+          )
+        )
+          return;
+      }
       const next = {
         ...data,
         assets: asset
@@ -205,7 +238,7 @@ export default function AssetForm({
           : "Posição inicial cadastrada no ELEVA Ensina",
       });
       saveLock.current = true;
-      if (!onSave(final)) {
+      if (!(await onSave(final))) {
         saveLock.current = false;
         setError(
           "O investimento não foi salvo. Confira o aviso da página e tente novamente; nenhum registro foi duplicado.",
@@ -494,6 +527,10 @@ export default function AssetForm({
                 onChange={(e) => change("openingDate", e.target.value)}
               />,
             )}
+            {(supportsRates(draft.investmentType) ||
+              draft.remunerationMode) && (
+              <ContractFields draft={draft} change={change} guided={guided} />
+            )}
             {locked ? (
               <div className="locked-position">
                 <strong>
@@ -608,7 +645,7 @@ export default function AssetForm({
             )}
             {field(
               byValue ? "Saldo atualizado (R$)" : "Valor atual da posição (R$)",
-              "Onde encontro essa informação? Procure saldo atualizado ou posição atual no extrato. Use o total, não o preço de uma cota. Exclua proventos já pagos fora da posição.",
+              "Onde encontro essa informação? Procure saldo atualizado ou posição atual no extrato. Use o total, não o preço de uma cota. Exclua proventos já pagos fora da posição. Em novos cadastros por valor, sugerimos o valor aplicado até você editar este saldo. Ele pode ser menor que o capital, inclusive zero; perdas exigem confirmação antes de salvar.",
               "Capital de R$ 10.000 e saldo de R$ 10.350: valorização de R$ 350.",
               <input
                 type="number"
@@ -631,6 +668,18 @@ export default function AssetForm({
                 ação.
               </p>
             </div>
+            {field(
+              "Data do saldo atualizado",
+              "Data de referência do saldo no extrato, não a data de vencimento. Em registros antigos sem essa informação, deixe em branco até conferir. É diferente da data de aplicação e da data da posição inicial.",
+              "Consulte seu comprovante de aplicação e o extrato atualizado.",
+              <input
+                type="date"
+                min={draft.openingDate}
+                max={today()}
+                value={draft.valuationDate}
+                onChange={(e) => change("valuationDate", e.target.value)}
+              />,
+            )}
           </section>
         )}
         {guided && step === 3 && review && (
@@ -664,6 +713,16 @@ export default function AssetForm({
               <div>
                 <dt>Capital inicial</dt>
                 <dd>{money(review.openingInvested)}</dd>
+              </div>
+              {review.remuneration && (
+                <div>
+                  <dt>Taxa contratada</dt>
+                  <dd>{contractLabel(review.remuneration)}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Data do saldo</dt>
+                <dd>{review.valuationDate || "Não informada"}</dd>
               </div>
               <div>
                 <dt>

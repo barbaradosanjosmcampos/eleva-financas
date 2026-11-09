@@ -4,6 +4,12 @@ Aplicativo web de organização financeira pessoal, em português do Brasil. Rea
 
 Agora inclui instalação como PWA em navegadores compatíveis, com instruções para Android/iPhone e aviso de nova versão. Consulte [instalação, dados locais, atualizações e testes do PWA](docs/PWA.md). Não há promessa de operação offline completa; exporte um backup JSON antes de instalar ou trocar de navegador.
 
+## Contas individuais com Supabase (etapa inicial)
+
+A carteira sincronizada exige login real e configuração de um projeto Supabase. Cadastro, confirmação de e-mail e recuperação de senha usam o SDK oficial; o espaço local e a demonstração continuam independentes. Nenhum registro local é enviado automaticamente. Consulte [configuração, migrations, RLS, importação opcional e validação em homologação](docs/SUPABASE.md) e [ambiente cloud](docs/CLOUD_SETUP.md).
+
+Esta implementação não certifica prontidão comercial: o projeto Supabase de destino, os fluxos de e-mail e as políticas precisam de testes reais antes de publicar. Não inclui pagamentos ou assinaturas.
+
 ## Executar
 
 Requisitos: Node.js 22.12+ e npm (validado com Node.js 24).
@@ -46,6 +52,8 @@ As cinco páginas usam navegação por hash com histórico do navegador. No celu
 
 ## Investimentos · ELEVA Ensina
 
+O **ELEVA Investimentos Inteligentes** acrescenta remuneração contratada opcional, datas de aplicação e saldo, acompanhamento separado do resultado observado e cenários educativos com hipóteses explícitas. CDI e IPCA permanecem manuais, sem cotações em tempo real. Consulte [regras, fórmulas, compatibilidade e validação](docs/INVESTIMENTOS_INTELIGENTES.md).
+
 ### Cadastro guiado e rápido
 
 O assistente **ELEVA Ensina** começa pela escolha do tipo: **CDB / LCI / LCA, Tesouro Direto, ações, ETFs, fundos imobiliários ou outros**.
@@ -58,6 +66,8 @@ O assistente **ELEVA Ensina** começa pela escolha do tipo: **CDB / LCI / LCA, T
 ### Duas formas de controlar a posição
 
 **Por valor aplicado e saldo:** permite cadastrar renda fixa (CDB/LCI/LCA, Tesouro acompanhado por valor e outros compatíveis) sem inventar uma quantidade. Informe o capital aplicado inicial e o saldo atualizado. Exemplo: R$ 10.000 aplicados e R$ 10.350 de saldo representam R$ 350 de valorização em aberto, não um novo aporte ou provento pago. Quantidade e preço médio não se aplicam nesse controle.
+
+Em novos cadastros por valor, o saldo acompanha o valor aplicado inicial até você editar o saldo (inclusive se apagá-lo ou informar zero). Abrir ou alterar um investimento existente nunca preenche seu saldo automaticamente. Perdas são permitidas: antes de salvar um saldo menor que o capital remanescente, a confirmação informa a perda em reais e percentual; saldo zero com capital positivo exige confirmação específica da perda de 100%. Cancelar mantém o rascunho e não grava a carteira nem o registro patrimonial. A comparação respeita aportes e resgates já registrados. Valores negativos, inválidos ou novos valores monetários com frações de centavos continuam bloqueados.
 
 **Por cotas ou unidades:** ações, ETFs, FIIs e posições com unidades utilizam quantidade e custo médio. No cadastro, o valor investido inicial é calculado por **quantidade × preço médio**, com arredondamento do total para centavos. Na edição anterior a operações de capital, quantidade e custo total podem ser corrigidos; o preço médio é calculado por divisão. Para começar sem saldo, use quantidade, preço médio e valor atual iguais a zero. Renda fixa também pode usar unidades se o extrato as fornecer.
 
@@ -190,7 +200,7 @@ src/
  e2e/                           # Cenários de interface com Playwright
 ```
 
-Os módulos de cálculo em JavaScript têm declarações TypeScript (`.d.mts`) para consumo tipado pela interface e execução direta no `node:test`. A separação entre estado, modelos, cálculos e telas permite substituir o armazenamento por um serviço no futuro. Esta versão não requer variáveis de ambiente; a variável opcional dos testes apenas seleciona o executável local do navegador.
+Os módulos de cálculo em JavaScript têm declarações TypeScript (`.d.mts`) para consumo tipado pela interface e execução direta no `node:test`. A separação entre estado, modelos, cálculos e telas permite substituir o armazenamento por um serviço no futuro. O espaço local não requer variáveis. A carteira sincronizada usa as duas configurações públicas de `.env.example`; consulte `docs/SUPABASE.md`. A variável opcional do Playwright seleciona o executável local do navegador.
 
 ## ELEVA Independência Financeira
 

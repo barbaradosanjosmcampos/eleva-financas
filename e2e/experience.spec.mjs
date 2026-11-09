@@ -243,6 +243,11 @@ test("demonstração e carteira pessoal ficam isoladas em todas as áreas", asyn
   await page
     .getByLabel("Valor atual da posição (R$)", { exact: true })
     .fill("9999");
+  page.once("dialog", async (dialog) => {
+    expect(dialog.type()).toBe("confirm");
+    expect(dialog.message()).toContain("Perda:");
+    await dialog.accept();
+  });
   await page
     .getByRole("button", { name: "Salvar investimento", exact: true })
     .click();
