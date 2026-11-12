@@ -1,0 +1,16 @@
+.premium-shell {
+  max-width: 1120px;
+  margin: auto;
+  padding: clamp(16px, 4vw, 48px);
+}
+.premium-header {
+  margin-bottom: 24px;
+}
+.premium-header .brand {
+  width: max-content;
+  margin-bottom: 24px;
+  color: var(--ink, #153e32);
+}
+.premium-shell .account-panel {
+  max-width: 520px;
+}

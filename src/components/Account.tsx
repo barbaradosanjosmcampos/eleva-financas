@@ -6,10 +6,12 @@ export default function Account({
   recovery,
   onRecovered,
   notice,
+  premium = false,
 }: {
   recovery: boolean;
   onRecovered: () => void;
   notice: string;
+  premium?: boolean;
 }) {
   const [screen, setScreen] = useState<Screen>(recovery ? "reset" : "login");
   const [busy, setBusy] = useState(false);
@@ -92,17 +94,18 @@ export default function Account({
   };
   return (
     <section className="panel account-panel" aria-label="Acesso à conta">
-      <div className="eyebrow">ELEVA · SUA CARTEIRA SINCRONIZADA</div>
+      <div className="eyebrow">{premium ? "ELEVA · SIMULADOR PREMIUM" : "ELEVA · SUA CARTEIRA SINCRONIZADA"}</div>
       <h2>{titles[active]}</h2>
       <p>
-        Uma conta individual para organizar suas conquistas. A demonstração
-        continua disponível sem login.
+        {premium
+          ? "Use o mesmo e-mail da sua compra na Kiwify."
+          : "Uma conta individual para organizar suas conquistas. A demonstração continua disponível sem login."}
       </p>
       {notice && <p role="status">{notice}</p>}
       {!supabase && (
         <p role="alert">
           {configurationError ||
-            "A sincronização ainda não foi configurada. A carteira local e a demonstração continuam disponíveis."}
+            (premium ? "O acesso ao simulador ainda não está configurado." : "A sincronização ainda não foi configurada. A carteira local e a demonstração continuam disponíveis.")}
         </p>
       )}
       {error && <p role="alert">{error}</p>}

@@ -15,9 +15,11 @@ import { project } from "../lib/projection.mjs";
 export default function Simulator({
   portfolioValue,
   mode,
+  calculatePremium,
 }: {
   portfolioValue: number;
   mode: "personal" | "demo";
+  calculatePremium?: (input: { initial: number; monthly: number; rate: number; years: number }) => Promise<ReturnType<typeof project>>;
 }) {
   const [params, setParams] = useState({
     initial: portfolioValue,
@@ -25,22 +27,38 @@ export default function Simulator({
     rate: 8,
     years: 10,
   });
-  const series = project(
+  const [remoteSeries, setRemoteSeries] = useState<ReturnType<typeof project>>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const series = calculatePremium ? remoteSeries : project(
     params.initial,
     params.monthly,
     params.rate,
     params.years,
   );
   const last = series[series.length - 1];
-  function calculate(e: React.FormEvent<HTMLFormElement>) {
+  async function calculate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    setParams({
+    const next = {
       initial: Number(f.get("initial")),
       monthly: Number(f.get("monthly")),
       rate: Number(f.get("rate")),
       years: Number(f.get("years")),
-    });
+    };
+    if (calculatePremium) {
+      setBusy(true);
+      setError("");
+      setRemoteSeries([]);
+      try {
+        setRemoteSeries(await calculatePremium(next));
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Não foi possível calcular agora.");
+      } finally {
+        setBusy(false);
+      }
+    }
+    setParams(next);
   }
   return (
     <>
@@ -52,12 +70,12 @@ export default function Simulator({
           </p>
         </div>
       </div>
-      <p className="simulation-source">
+      {!calculatePremium && <p className="simulation-source">
         Valor inicial preenchido com {money(portfolioValue)} da{" "}
         {mode === "demo" ? "demonstração" : "sua carteira pessoal"}. Você pode
         alterá-lo para explorar hipóteses; a simulação não modifica sua
         carteira.
-      </p>
+      </p>}
       <div className="simulator-grid">
         <section className="panel simulation-form">
           <div className="panel-heading">
@@ -109,13 +127,18 @@ export default function Simulator({
                 required
               />
             </Field>
-            <button className="primary full">
-              Calcular projeção
+            <button className="primary full" disabled={busy}>
+              {busy ? "Calculando…" : "Calcular projeção"}
               <ArrowIcon />
             </button>
           </form>
         </section>
-        <section className="panel simulation-result">
+        {!last ? (
+          <section className="panel simulation-result" aria-live="polite">
+            <h3>Sua projeção</h3>
+            {error ? <p role="alert">{error}</p> : <p>Preencha os valores e calcule sua projeção.</p>}
+          </section>
+        ) : <section className="panel simulation-result">
           <div className="panel-heading">
             <div>
               <h3>O horizonte dos seus planos</h3>
@@ -197,7 +220,7 @@ export default function Simulator({
               Capital aportado
             </span>
           </div>
-        </section>
+        </section>}
       </div>
       <div className="notice">
         <Info size={20} />

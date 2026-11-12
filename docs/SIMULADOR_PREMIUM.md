@@ -1,0 +1,11 @@
+# Publicação do simulador ELEVA Premium
+
+O simulador aproveita o formulário e o gráfico do ELEVA. A versão Premium só entrega projeções a contas confirmadas com uma compra ativa, mesmo que o link seja encaminhado. São 12 meses a partir da aprovação, em compra única. Reembolso e chargeback revogam o pedido.
+
+1. **Supabase**. Aplique a migração `202611120001_premium_simulator.sql`. Mantenha a confirmação de e-mail e configure SMTP próprio para os compradores. Adicione o endereço do simulador nas URLs autorizadas pelo Supabase Auth.
+2. **Identificação do Premium**. A opção mais simples é um produto Premium separado, configurado como pagamento único. Use o ID desse produto no segredo `KIWIFY_PREMIUM_PRODUCT_ID`. Se Essencial e Premium forem ofertas do mesmo produto, configure também `KIWIFY_PREMIUM_OFFER_ID` e confirme que o evento real traz esse identificador em `Product.product_offer_id`. O recebimento ignora produtos e ofertas fora do filtro.
+3. **Integração**. Gere um segredo aleatório longo e configure-o como `KIWIFY_WEBHOOK_SECRET` no Supabase. Publique a Edge Function `kiwify-simulator` usando a configuração do repositório. Em Kiwify → Apps → Webhooks, selecione o produto Premium e os eventos de compra aprovada, reembolso e chargeback. Use a URL da função acrescida de `?secret=SEU_SEGREDO`. Trate essa URL como credencial. Use os registros do webhook para conferir o recebimento e reenvie eventos com falha quando necessário.
+4. **Cloudflare**. Conecte a branch `feat/simulador-black-friday` ao projeto Pages. Use `npm run build` e diretório de saída `dist`. Configure `VITE_ELEVA_PREMIUM=true`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. Nunca use chaves privadas em variáveis `VITE_`.
+5. **Entrega**. Coloque somente a URL pública do simulador no módulo Premium da Kiwify. Oriente o aluno a criar a conta com o e-mail da compra e confirmá-lo. Antes de divulgar, use o botão de teste do webhook da Kiwify e confira pelo menos uma entrada com acesso e uma sem acesso. O teste local do banco roda com `npm test`, sem cobrança ou compra real.
+
+Compras aprovadas antes da ativação da integração precisam ser reenviadas pelos registros da Kiwify quando disponíveis ou importadas com o ID original e a data original de aprovação. Reenviar uma aprovação não reinicia o prazo. Uma aprovação atrasada também não reabre um pedido revogado.
